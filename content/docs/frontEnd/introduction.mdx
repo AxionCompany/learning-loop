@@ -1,0 +1,150 @@
+---
+title: Introdução
+description: O que é o React e como funciona seu processo de renderização.
+---
+
+## O que é o React?
+
+O React é uma biblioteca JavaScript de código aberto criada pela Meta (antigo Facebook), utilizada para construir **interfaces de usuário (UI)**.
+
+Seu principal objetivo é facilitar a criação de aplicações web **dinâmicas, reutilizáveis e performáticas**, permitindo dividir a interface em pequenos componentes independentes.
+
+---
+
+## Como funciona a renderização do React?
+
+Uma forma simples de pensar no React é:
+
+> **Sempre que `state` ou `props` mudam, o componente é executado novamente.**
+
+```tsx
+function MyComponent() {
+  // este código roda novamente a cada render
+}
+```
+
+Mas existe um detalhe importante:
+
+> **Executar novamente o componente NÃO significa atualizar o DOM imediatamente.**
+
+O React primeiro recalcula a interface em memória e só depois decide o que realmente precisa mudar na tela.
+
+---
+
+## 🔁 Ciclo básico de renderização
+
+1. Algum `state` é atualizado (`setState`)
+2. O React agenda um novo render
+3. O componente é **reexecutado**
+4. O React compara a UI antiga com a nova
+5. Apenas as diferenças necessárias são aplicadas no DOM real
+
+---
+
+## O que é o Virtual DOM?
+
+Atualizar o DOM real diretamente é uma operação relativamente custosa.
+
+Por isso, o React cria uma representação leve da interface em memória chamada **Virtual DOM**.
+
+Se tivermos isso:
+
+```tsx
+<div>
+  <h1>Olá desenvolvedor!</h1>
+</div>
+```
+
+O React cria algo conceitualmente parecido com isto:
+
+```js
+{
+  type: "div",
+  children: [
+    {
+      type: "h1",
+      children: ["Olá desenvolvedor!"]
+    }
+  ]
+}
+```
+
+Essa estrutura é muito mais leve para criar e comparar do que manipular o DOM real do navegador.
+
+<details>
+  <summary>💡 O Virtual DOM é igual ao DOM real?</summary>
+
+  Não.
+
+  O Virtual DOM é apenas uma representação em memória da interface.
+
+  O DOM real é o HTML renderizado pelo navegador.
+
+</details>
+
+---
+
+## Como funciona a reconciliação?
+
+A **reconciliação** é o processo usado pelo React para descobrir **o que realmente mudou** entre um render e outro.
+
+O fluxo funciona assim:
+
+### 1. O componente renderiza novamente
+
+O componente é executado de novo após uma mudança de `state` ou `props`.
+
+### 2. O React cria um novo Virtual DOM
+
+Agora existem duas versões da interface:
+
+- Virtual DOM anterior
+- Novo Virtual DOM
+
+### 3. O React compara as duas versões
+
+Exemplo:
+
+**Antes**
+
+```html
+<h1>Olá desenvolvedor</h1>
+```
+
+**Depois**
+
+```html
+<h1>Olá dev</h1>
+```
+
+O React detecta:
+
+- o elemento `<h1>` continua existindo
+- apenas o conteúdo do texto mudou
+
+### 4. Atualização do DOM real
+
+Como somente o texto mudou, o React:
+
+✅ Atualiza apenas o conteúdo textual  
+❌ Não recria todo o elemento `<h1>`
+
+Isso reduz operações desnecessárias e melhora a performance da aplicação.
+
+---
+
+## Resumo mental rápido
+
+Você pode pensar no React da seguinte forma:
+
+```text
+State/Props mudam
+        ↓
+Componente renderiza novamente
+        ↓
+Novo Virtual DOM é criado
+        ↓
+React compara versões (Reconciliação)
+        ↓
+Somente mudanças necessárias vão para o DOM real
+```

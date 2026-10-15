@@ -1,0 +1,380 @@
+---
+title: Tanstack
+description: O que é o Tanstack e como ele pode facilitar no controle de requisições e cacheamento.
+---
+
+# React Query — `useQuery`
+
+## O que é o `useQuery`?
+
+O `useQuery` é um hook do React Query responsável por gerenciar requisições assíncronas no React.
+
+Ele é mais utilizado para operações de leitura de dados, normalmente requisições:
+
+- `GET`
+- carregamento de telas
+- busca de listas
+- detalhes de entidades
+- consultas em geral
+
+O `useQuery` assume o controle da Promise da requisição e fornece:
+- estados prontos para uso
+- gerenciamento de cache
+- controle de loading e erro
+- refetch automático
+- retries automáticos
+- sincronização de dados
+
+Sem o React Query, normalmente precisaríamos controlar tudo manualmente utilizando:
+- `useEffect`
+- `useState`
+- loading
+- tratamento de erro
+- cache
+- retry
+- sincronização
+
+Com o `useQuery`, toda essa complexidade já vem pronta.
+
+## Quando usar `useMutation`?
+
+Enquanto o `useQuery` é focado em leitura de dados, o `useMutation` é utilizado para operações que alteram dados.
+
+Normalmente:
+- `POST`
+- `PUT`
+- `PATCH`
+- `DELETE`
+
+Exemplos:
+- criar pedido
+- cancelar pedido
+- atualizar usuário
+- remover item
+- realizar pagamento
+
+O `useMutation` fornece:
+- controle da mutação
+- loading da ação
+- callbacks de sucesso e erro
+- integração com cache do React Query
+
+## Exemplo de `useMutation`
+
+```tsx
+type Payload = {
+  userId: string;
+  orderId: string;
+  paymentType: PaymentType;
+  queryOrderId?: string;
+};
+
+export const useCancelOrder = (
+  onSuccessCallback?: () => void,
+  onErrorCallback?: (error: unknown) => void,
+) => {
+  const queryClient = useQueryClient();
+
+  const { mutate: handleCancelOrder, isPending } = useMutation({
+    mutationKey: ["cancelOrder"],
+
+    mutationFn: async ({
+      userId,
+      orderId,
+      paymentType,
+    }: Payload) => {
+      if (paymentType === PaymentType.INVOICE) {
+        return cancelInvoicedOrder({
+          userId,
+          orderId,
+        });
+      }
+
+      return cancelOrder({
+        userId,
+        orderId,
+      });
+    },
+
+    onSuccess: async (_data, variables) => {
+      if (variables.queryOrderId) {
+        await queryClient.invalidateQueries({
+          queryKey: [
+            "orderDetails",
+            variables.queryOrderId,
+          ],
+        });
+      }
+
+      onSuccessCallback?.();
+    },
+
+    onError: (error) => {
+      onErrorCallback?.(error);
+    },
+  });
+
+  return {
+    handleCancelOrder,
+    isPending,
+  };
+};
+```
+
+## O que está acontecendo nesse exemplo?
+
+### `mutationKey`
+
+Identifica unicamente a mutation dentro do React Query.
+
+```tsx
+mutationKey: ["cancelOrder"]
+```
+
+---
+
+### `mutationFn`
+
+Função responsável por executar a alteração dos dados.
+
+```tsx
+mutationFn: async (...) => {}
+```
+
+No exemplo:
+- cancela um pedido
+- escolhe qual endpoint chamar
+- dependendo do tipo de pagamento
+
+---
+
+### `isPending`
+
+Indica se a mutation ainda está sendo executada.
+
+```tsx
+if (isPending) {
+  return <Loading />;
+}
+```
+
+---
+
+### `onSuccess`
+
+Executado quando a mutation finaliza com sucesso.
+
+```tsx
+onSuccess: async () => {}
+```
+
+Muito utilizado para:
+- exibir feedback
+- invalidar cache
+- redirecionar
+- atualizar dados
+
+---
+
+### `invalidateQueries`
+
+Após alterar um dado no backend, o cache antigo pode ficar desatualizado.
+
+Por isso utilizamos:
+
+```tsx
+queryClient.invalidateQueries(...)
+```
+
+Isso força o React Query a buscar novamente os dados atualizados.
+
+No exemplo:
+
+```tsx
+queryKey: ["orderDetails", variables.queryOrderId]
+```
+
+A query de detalhes do pedido será recarregada após o cancelamento.
+
+---
+
+### `onError`
+
+Executado quando ocorre erro na mutation.
+
+```tsx
+onError: (error) => {}
+```
+
+Pode ser usado para:
+- exibir toast
+- tratar erro
+- logar exceções
+- executar fallback
+
+## Como usar o `useMutation`?
+
+Após criar o hook customizado, basta utilizá-lo dentro do componente.
+
+Exemplo:
+
+```tsx
+const {
+  handleCancelOrder,
+  isPending: isLoadingPage,
+} = useCancelOrder(
+  () => {
+    // mostrar toast de sucesso
+  },
+
+  (error: unknown) => {
+    //mostrar toast de erro
+  },
+);
+```
+
+## O que está acontecendo aqui?
+
+O hook `useCancelOrder` recebe dois callbacks:
+
+- callback de sucesso
+- callback de erro
+
+Isso permite desacoplar:
+- regra da mutation
+- comportamento da tela
+
+O hook continua responsável pela lógica da requisição, enquanto o componente controla:
+- navegação
+- toast
+- feedback visual
+- tratamento específico da UI
+
+## Executando a mutation
+
+Depois de obter a função `handleCancelOrder`, basta chamá-la passando os dados necessários:
+
+```tsx
+const cancelOrder = () => {
+  if (!user || !order?._id) {
+    return;
+  }
+
+  handleCancelOrder({
+    userId: user._id,
+    orderId: order._id,
+    paymentType: order.paymentType!,
+    queryOrderId: id,
+  });
+};
+```
+
+## O que é o `mutate`?
+
+Internamente, o React Query fornece a função:
+
+```tsx
+mutate()
+```
+
+No hook customizado, ela foi renomeada para:
+
+```tsx
+handleCancelOrder
+```
+
+```tsx
+const {
+  mutate: handleCancelOrder
+} = useMutation(...)
+```
+
+Isso melhora:
+- legibilidade
+- intenção do código
+- semântica da ação
+
+## O que é o `isPending`?
+
+O `isPending` representa o estado de loading da mutation.
+
+```tsx
+const {
+  isPending
+} = useMutation(...)
+```
+
+No exemplo:
+
+```tsx
+isPending: isLoadingPage
+```
+
+Foi utilizado alias para deixar o nome mais semântico no componente.
+
+Enquanto a mutation estiver executando:
+- `isLoadingPage` será `true`
+- botões podem ser desabilitados
+- loaders podem ser exibidos
+- múltiplos cliques podem ser evitados
+
+Exemplo:
+
+```tsx
+<Button
+  disabled={isLoadingPage}
+>
+  Cancelar pedido
+</Button>
+```
+
+## Benefícios dessa abordagem
+
+Centralizar a mutation em um hook customizado ajuda a:
+- reutilizar lógica
+- desacoplar componentes
+- padronizar chamadas
+- simplificar manutenção
+- evitar duplicação de código
+
+Além disso, o componente fica mais declarativo:
+
+```text
+"O que acontece na tela"
+```
+
+Enquanto o hook controla:
+
+```text
+"Como a mutation funciona"
+```
+
+## Diferença mental entre `useQuery` e `useMutation`
+
+```text
+useQuery
+→ buscar dados
+
+useMutation
+→ alterar dados
+```
+
+## Regra prática
+
+Use `useQuery` quando:
+- precisa carregar dados
+- deseja cache automático
+- quer sincronização de leitura
+
+Use `useMutation` quando:
+- precisa alterar dados
+- executar ações do usuário
+- invalidar cache após alterações
+
+Principais referências:
+
+- [TanStack Query Docs](https://tanstack.com/query/latest)  
+- [TanStack Query — useQuery](https://tanstack.com/query/latest/docs/react/reference/useQuery)
+- [TanStack Query — useMutation](https://tanstack.com/query/latest/docs/react/reference/useMutation)  
+- [TanStack Query — Query Invalidation](https://tanstack.com/query/latest/docs/react/guides/query-invalidation)  
+  

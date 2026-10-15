@@ -1,0 +1,32 @@
+{
+  "node_modules/fumadocs-core/dist/search/client.js -> ../algolia-NTWLS6J3.js": {
+    "id": "node_modules/fumadocs-core/dist/search/client.js -> ../algolia-NTWLS6J3.js",
+    "files": [
+      "static/chunks/_app-pages-browser_node_modules_fumadocs-core_dist_algolia-NTWLS6J3_js.js"
+    ]
+  },
+  "node_modules/fumadocs-core/dist/search/client.js -> ../fetch-4K7QOPFM.js": {
+    "id": "node_modules/fumadocs-core/dist/search/client.js -> ../fetch-4K7QOPFM.js",
+    "files": [
+      "static/chunks/_app-pages-browser_node_modules_fumadocs-core_dist_fetch-4K7QOPFM_js.js"
+    ]
+  },
+  "node_modules/fumadocs-core/dist/search/client.js -> ../orama-cloud-HAZVD2ZO.js": {
+    "id": "node_modules/fumadocs-core/dist/search/client.js -> ../orama-cloud-HAZVD2ZO.js",
+    "files": [
+      "static/chunks/_app-pages-browser_node_modules_fumadocs-core_dist_orama-cloud-HAZVD2ZO_js.js"
+    ]
+  },
+  "node_modules/fumadocs-core/dist/search/client.js -> ../static-KPGOHAZ2.js": {
+    "id": "node_modules/fumadocs-core/dist/search/client.js -> ../static-KPGOHAZ2.js",
+    "files": [
+      "static/chunks/_app-pages-browser_node_modules_fumadocs-core_dist_static-KPGOHAZ2_js.js"
+    ]
+  },
+  "node_modules/fumadocs-ui/dist/provider.js -> ./components/dialog/search-default": {
+    "id": "node_modules/fumadocs-ui/dist/provider.js -> ./components/dialog/search-default",
+    "files": [
+      "static/chunks/_app-pages-browser_node_modules_fumadocs-ui_dist_components_dialog_search-default_js.js"
+    ]
+  }
+}

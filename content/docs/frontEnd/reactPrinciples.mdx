@@ -1,0 +1,243 @@
+---
+title: Princípios do React
+description: Padrões, convenções e boas práticas para escrever aplicações React mais previsíveis e escaláveis.
+---
+
+# Princípios do React
+
+O React possui uma filosofia baseada em:
+- previsibilidade
+- composição
+- fluxo de dados simples
+- separação de responsabilidades
+
+Esses princípios ajudam a criar aplicações mais fáceis de manter e escalar.
+
+## 1. Single Source of Truth
+
+Cada informação deve possuir uma única fonte da verdade.
+
+❌ Errado
+
+```tsx
+const [user, setUser] = useState(...);
+const [username, setUsername] = useState(...);
+```
+
+✅ Correto
+
+```tsx
+const [user, setUser] = useState(...);
+
+const username = user.name;
+```
+
+Evita inconsistência e duplicação de estado.
+
+---
+
+## 2. Derivação de estado
+
+> Se algo pode ser calculado, normalmente ele não deve ser armazenado.
+
+❌ Errado
+
+```tsx
+const [firstName, setFirstName] = useState("Fullstack");
+const [lastName, setLastName] = useState("Developer");
+
+const [fullName, setFullName] = useState("");
+
+useEffect(() => {
+  setFullName(`${firstName} ${lastName}`);
+}, [firstName, lastName]);
+```
+
+✅ Correto
+
+```tsx
+const fullName = `${firstName} ${lastName}`;
+```
+
+Estados derivados costumam gerar:
+- duplicação
+- sincronizações desnecessárias
+- bugs silenciosos
+
+---
+
+## 3. Componentes devem ser puros
+
+Um componente deve:
+- receber `props`
+- retornar UI
+- evitar efeitos colaterais no render
+
+❌ Errado
+
+```tsx
+function Component() {
+  fetchData();
+
+  return <div>Olá</div>;
+}
+```
+
+✅ Correto
+
+```tsx
+useEffect(() => {
+  fetchData();
+}, []);
+```
+
+O render deve ser previsível.
+
+---
+
+## 4. Data Down, Actions Up
+
+O fluxo de dados do React é unidirecional:
+- dados descem via `props`
+- ações sobem via callbacks
+
+```tsx
+<Child onClick={handleClick} />
+```
+
+O filho não altera estado diretamente.  
+Ele apenas comunica uma ação ao componente pai.
+
+---
+
+## 5. State Colocation
+
+O estado deve ficar o mais próximo possível de onde é utilizado.
+
+❌ Errado
+
+```text
+App
+ └── guarda estado de um input pequeno
+```
+
+✅ Correto
+
+```text
+InputComponent
+ └── guarda seu próprio estado
+```
+
+Isso reduz:
+- re-renders
+- prop drilling
+- complexidade
+
+---
+
+## 6. Evite `useEffect` desnecessário
+
+O `useEffect` deve sincronizar o React com sistemas externos:
+- APIs
+- timers
+- eventos
+- DOM
+
+❌ Errado
+
+```tsx
+useEffect(() => {
+  setFullName(first + last);
+}, [first, last]);
+```
+
+✅ Correto
+
+```tsx
+const fullName = first + last;
+```
+
+Regra prática:
+
+```text
+Se não existe algo externo acontecendo,
+talvez você não precise de useEffect.
+```
+
+---
+
+## 7. Prefira composição
+
+❌ Errado
+
+```text
+Componente com 500 linhas
+Múltiplos ifs
+Muitas responsabilidades
+```
+
+✅ Correto
+
+```tsx
+{isLoading && <Loading />}
+{error && <Error />}
+{data && <Content />}
+```
+
+Componentes menores são mais reutilizáveis e previsíveis.
+
+---
+
+## 8. Use keys estáveis
+
+❌ Errado
+
+```tsx
+items.map((item, index) => (
+  <Item key={index} />
+));
+```
+
+✅ Correto
+
+```tsx
+items.map((item) => (
+  <Item key={item.id} />
+));
+```
+
+Keys ajudam o React a identificar elementos entre renders.
+
+---
+
+## 9. Evite otimização prematura
+
+Não use:
+- `useMemo`
+- `useCallback`
+- `React.memo`
+
+sem necessidade.
+
+Prefira otimizar apenas quando:
+- existe render pesado
+- cálculos custosos
+- estabilidade de referência importa
+
+---
+
+## Resumo mental rápido
+
+```text
+Isso pode ser calculado?
+→ derive
+
+Isso precisa existir sozinho?
+→ state
+
+Isso sincroniza algo externo?
+→ useEffect
+
+Isso está complexo demais?
+→ componha
+```

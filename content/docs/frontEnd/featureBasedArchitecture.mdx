@@ -1,0 +1,517 @@
+---
+title: Arquitetura baseada em Features
+description: Organização de código baseada em domínio e contexto de negócio para aplicações React escaláveis.
+---
+
+# Arquitetura baseada em Features
+
+A aplicação é organizada em **features separadas por contexto de negócio**.
+
+A ideia principal é:
+
+```text
+Cada feature representa uma responsabilidade clara do sistema.
+```
+
+Exemplos:
+- autenticação
+- pedidos
+- pagamento
+- usuário
+- plantio
+- checkout
+
+## Conceito importante
+
+> **Uma tela é uma feature, mas nem toda feature é uma tela.**
+
+Isso significa que:
+- algumas features representam páginas completas
+- outras representam apenas partes reutilizáveis do domínio
+
+Exemplo:
+- `Checkout` → tela
+- `Payment` → recurso compartilhado entre múltiplas telas
+
+Uma feature também pode compartilhar:
+- componentes
+- hooks
+- serviços
+- estados
+- utilitários
+
+com outras features da aplicação.
+
+## Vantagens da arquitetura por feature
+
+Organizar a aplicação dessa forma traz vários benefícios:
+
+- arquivos agrupados por domínio
+- **separação clara de responsabilidades**
+- **maior escalabilidade**
+- **menos acoplamento**
+- manutenção simplificada
+- reutilização de código
+- testes mais fáceis
+
+A estrutura deixa mais claro:
+- o que pertence ao quê
+- onde cada responsabilidade deve ficar
+- como navegar pelo projeto
+
+## Desvantagens
+
+A principal dificuldade é entender corretamente:
+- o domínio
+- os limites de cada feature
+- o que realmente pertence a cada contexto
+
+Sem isso, a arquitetura pode acabar ficando desorganizada.
+
+## Estrutura de arquivos
+
+### Extensão de arquivos
+
+Utilize:
+- `.tsx` para componentes React
+- `.ts` para demais arquivos
+
+Exemplo:
+
+```text
+Button.tsx
+userManager.ts
+paymentRepository.ts
+```
+
+## Convenções de nomenclatura
+
+### Features
+
+Features utilizam `PascalCase`.
+
+```text
+Checkout
+UserProfile
+Planting
+```
+
+### Managers, Repository e Slice
+
+Utilize o nome da feature seguido da responsabilidade.
+
+```text
+CheckoutManager.ts
+CheckoutRepository.ts
+CheckoutSlice.ts
+```
+
+Isso melhora:
+- organização
+- busca de arquivos
+- previsibilidade
+
+### Tipagens
+
+#### Interfaces
+
+Utilize prefixo `I`.
+
+```ts
+interface ICardProps {}
+```
+
+#### Types
+
+Utilize prefixo `T`.
+
+```ts
+type TColors = "primary" | "secondary";
+```
+
+#### Enums
+
+Utilize sufixo `Enum`.
+
+```ts
+PaymentStatusEnum
+```
+
+## Estrutura interna da feature
+
+## `feature/hooks`
+
+Responsável por hooks da feature.
+
+### `use<FeatureName>State`
+
+Hook criado para encapsular o consumo de estados globais.
+
+Exemplo:
+
+```text
+useCheckoutState
+```
+
+O componente **nunca deve consumir diretamente**:
+- Zustand
+- Redux
+- stores globais
+
+A responsabilidade do hook é abstrair:
+- seleção de estado
+- ações
+- regras de acesso
+
+Isso **desacopla o componente da implementação do store**.
+
+### `useLoad<Anything>`
+
+Hooks responsáveis por chamadas backend utilizando:
+- React Query
+- services
+- managers
+
+Exemplo:
+
+```text
+useLoadOrders
+useLoadTickets
+```
+
+Isso centraliza:
+- cache
+- loading
+- tratamento de erro
+- sincronização
+
+### Outros custom hooks
+
+Também podem existir hooks específicos do contexto da feature.
+
+Exemplo:
+- controle de modal
+- paginação
+- formulários
+- permissões
+
+## `feature/views`
+
+Responsável apenas pelos componentes visuais da feature.
+
+```text
+feature/views
+```
+
+A ideia é manter:
+- renderização
+- composição visual
+- estilização
+
+**separados da lógica de negócio**.
+
+### `views/styles`
+
+Responsável pelos estilos da feature.
+
+Exemplo:
+- Emotion
+- Styled Components
+- CSS Modules
+
+## `feature/services`
+
+Camada responsável pela comunicação e regras de integração.
+
+## `Manager`
+
+Responsável por intermediar:
+- componentes
+- hooks
+- backend
+
+O **Manager** normalmente:
+- orquestra chamadas
+- trata exceções
+- aplica regras
+- transforma dados
+- utiliza mappers
+
+Exemplo:
+
+```text
+CheckoutManager.ts
+```
+
+O componente **nunca deveria conhecer diretamente**:
+- DTOs
+- axios
+- estrutura da API
+
+## `Repository`
+
+Responsável exclusivamente pelas chamadas HTTP.
+
+Normalmente utiliza:
+- axios
+- fetch
+- clients HTTP
+
+Exemplo:
+
+```text
+CheckoutRepository.ts
+```
+
+O **Repository**:
+- busca dados
+- envia dados
+- retorna respostas da API
+
+Sem lógica de negócio.
+
+## `feature/utils`
+
+Responsável por recursos auxiliares da feature.
+
+### `mappers`
+
+Funções responsáveis por transformar:
+- DTOs
+- responses
+- payloads
+
+em formatos adequados para a view.
+
+Exemplo:
+
+```ts
+mapOrderResponseToViewData()
+```
+
+### `<featureName>Utils.ts`
+
+Funções utilitárias específicas da feature.
+
+Exemplo:
+
+```text
+checkoutUtils.ts
+```
+
+Essas funções só devem existir se fizerem sentido exclusivamente naquele domínio.
+
+### `constants`
+
+Constantes específicas da feature.
+
+Exemplo:
+
+```ts
+export const MAX_INSTALLMENTS = 12;
+```
+
+## Exemplo visual da estrutura
+
+```text
+features/
+└── Checkout/
+    ├── hooks/
+    ├── services/
+    ├── utils/
+    ├── views/
+    ├── types/
+    └── constants/
+```
+
+# Observações importantes
+
+## Props de componentes do Shared
+
+Quando quiser reutilizar o tipo de props de um componente do `shared`, **não crie tipos duplicados** em:
+
+```text
+shared/types
+```
+
+A própria interface de props do componente deve ser exportada.
+
+Exemplo:
+
+```tsx
+export interface IButtonProps {
+  disabled?: boolean;
+}
+```
+
+Depois:
+
+```tsx
+import Button, {
+  IButtonProps
+} from "@/shared/Button";
+```
+
+Isso evita:
+- duplicação
+- inconsistência
+- múltiplas fontes da verdade
+
+Também é possível derivar tipos diretamente do componente:
+
+```ts
+type ButtonProps =
+  React.ComponentProps<typeof Button>;
+```
+
+Isso garante que o tipo sempre permaneça sincronizado com o componente real.
+
+## Consumo do Shared
+
+O `shared` **nunca deve consumir**:
+- regras de domínio
+- features
+- estados específicos da aplicação
+
+O fluxo correto é:
+
+```text
+Domínio → consome → shared
+```
+
+E nunca:
+
+```text
+shared → consome → domínio
+```
+
+## ❌ Problema comum
+
+```text
+shared/TabBar
+  └── importa coisas do _app
+```
+
+Isso cria:
+- acoplamento
+- dependência circular
+- perda de reutilização
+
+## ✅ Correto
+
+O shared deve ser:
+- genérico
+- desacoplado
+- reutilizável
+- independente do domínio da aplicação
+
+## Regra mental
+
+Você pode pensar assim:
+
+```text
+Shared =
+componentes reutilizáveis e agnósticos
+
+Feature =
+regras e contexto de negócio
+```
+
+# Benefícios gerais dessa arquitetura
+
+Essa organização ajuda a:
+- **escalar aplicações grandes**
+- facilitar manutenção
+- melhorar testes
+- **reduzir acoplamento**
+- aumentar reutilização
+- melhorar previsibilidade
+- **organizar responsabilidades**
+
+Além disso, novos desenvolvedores conseguem entender o projeto com muito mais facilidade.
+
+## Exemplo real em um template de código
+
+Um exemplo prático dessa arquitetura pode ser encontrado no repositório abaixo:
+
+- [React Template Project](https://github.com/gensobrinho/react-template-project)
+
+O projeto utiliza:
+- arquitetura baseada em features
+- separação de camadas
+- React Query
+- organização por domínio
+- hooks customizados
+- services
+- managers
+- componentes reutilizáveis
+- padronização de nomenclaturas
+
+A estrutura serve como referência para:
+- aplicações React escaláveis
+- organização de projetos frontend
+- padronização de times
+- manutenção de aplicações grandes
+
+### Exemplo simplificado da estrutura
+
+```text
+src/
+├── features/
+│   ├── Checkout/
+│   │   ├── hooks/
+│   │   ├── services/
+│   │   ├── utils/
+│   │   ├── views/
+│   │   └── types/
+│   │
+│   ├── Auth/
+│   └── Orders/
+│
+├── shared/
+│   ├── components/
+│   ├── hooks/
+│   └── utils/
+│
+├── routes/
+├── providers/
+└── main.tsx
+```
+
+### O que essa estrutura ajuda a resolver?
+
+Em aplicações grandes, é comum surgirem problemas como:
+- arquivos espalhados
+- responsabilidades misturadas
+- dificuldade de manutenção
+- componentes acoplados
+- lógica duplicada
+
+A arquitetura baseada em features ajuda a organizar o projeto em torno do domínio da aplicação, deixando:
+- **responsabilidades mais claras**
+- navegação mais previsível
+- manutenção mais simples
+- reutilização mais natural
+
+# Fontes e referências
+
+Grande parte dessas práticas vem de:
+- arquitetura frontend moderna
+- Domain Driven Design (DDD)
+- Feature-Based Architecture
+- princípios de separação de responsabilidades
+- experiência consolidada da comunidade React
+
+Principais referências:
+
+- [How to structure a React App in 2025 (SPA, SSR or Native)](https://ramonprata.medium.com/how-to-structure-a-react-app-in-2025-spa-ssr-or-native-10d8de7a245a)
+
+- [React Docs](https://react.dev)
+
+- [Bulletproof React](https://github.com/alan2207/bulletproof-react)
+
+- [Feature-Sliced Design](https://feature-sliced.design)
+
+- [Clean Architecture](https://blog.cleancoder.com)
+
+- [TypeScript Handbook](https://www.typescriptlang.org/docs/)

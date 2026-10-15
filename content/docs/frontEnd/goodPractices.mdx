@@ -1,0 +1,359 @@
+---
+title: Princípios do React
+description: Padrões, convenções e boas práticas para escrever aplicações React mais previsíveis e escaláveis.
+---
+
+# Convenções e boas práticas React
+
+## Funções, variáveis e métodos em `camelCase`
+
+No ecossistema JavaScript/TypeScript, o padrão mais utilizado para funções, variáveis e métodos é o `camelCase`.
+
+✅ Correto
+
+```tsx
+const fetchUserData = () => {};
+const isLoading = true;
+
+function handleSubmit() {}
+```
+
+❌ Errado
+
+```tsx
+const fetch_user_data = () => {};
+const FetchUserData = () => {};
+```
+
+Padronização melhora leitura, previsibilidade, manutenção e onboarding de novos desenvolvedores.
+
+Convenções comuns no React:
+
+| Elemento | Convenção |
+|---|---|
+| Variáveis | `camelCase` |
+| Funções | `camelCase` |
+| Métodos | `camelCase` |
+| Componentes | `PascalCase` |
+| Hooks | `useSomething` |
+| Constantes globais | `UPPER_CASE` |
+
+## Evite componentes grandes
+
+Componentes muito grandes geralmente acumulam:
+- múltiplas responsabilidades
+- regras de negócio
+- renderização complexa
+- efeitos colaterais
+- estilização
+
+Isso reduz reutilização, legibilidade e testabilidade.
+
+❌ Problema comum
+
+```text
+UserPage.tsx
+- busca dados
+- faz tratamento
+- renderiza modal
+- controla formulário
+- controla tabela
+- possui 700 linhas
+```
+
+✅ Melhor abordagem
+
+```text
+UserPage
+ ├── UserHeader
+ ├── UserForm
+ ├── UserTable
+ └── UserModal
+```
+
+Componentes menores são mais reutilizáveis, previsíveis e fáceis de testar.
+
+## Evite “escovação de bit” no componente
+
+> O componente deve descrever a UI, não concentrar lógica complexa.
+
+❌ **Problema comum**
+
+```tsx
+users
+  .filter(...)
+  .sort(...)
+  .map(...)
+  .reduce(...)
+```
+
+Tudo diretamente dentro do JSX.
+
+✅ **Melhor abordagem**
+
+Extraia lógica para:
+- utils
+- hooks
+- services
+- funções auxiliares
+
+```tsx
+const sortedUsers = sortUsers(users);
+```
+
+Isso deixa o JSX mais declarativo, melhora legibilidade e facilita testes.
+
+Mentalidade importante:
+
+```text
+"O que deve aparecer na tela?"
+```
+
+E não:
+
+```text
+"Como cada detalhe interno funciona?"
+```
+
+## Constantes estáticas em `UPPER_CASE`
+
+Constantes imutáveis devem utilizar `UPPER_CASE_SEPARADO_POR_UNDERLINE`.
+
+✅ Correto
+
+```tsx
+const MAX_RETRY_COUNT = 3;
+const DEFAULT_TIMEOUT = 5000;
+```
+
+Esse padrão ajuda a identificar rapidamente valores fixos, configurações e constantes globais.
+
+## Código em inglês
+
+O inglês é o padrão dominante no ecossistema de software.
+
+Isso melhora:
+- consistência com bibliotecas
+- integração com comunidade
+- facilidade de pesquisa
+- onboarding internacional
+
+❌ Evite
+
+```tsx
+const buscarUsuario = () => {};
+```
+
+✅ Prefira
+
+```tsx
+const fetchUser = () => {};
+```
+
+## Evite IFs com muitas condições
+
+Condições complexas dificultam leitura, debugging e manutenção.
+
+❌ Difícil de entender
+
+```tsx
+if ((conditionOne && conditionThree) || conditionTwo) {
+  doSomething();
+}
+```
+
+✅ Mais legível
+
+```tsx
+const shouldDoSomething =
+  (conditionOne && conditionThree) || conditionTwo;
+
+if (shouldDoSomething) {
+  doSomething();
+}
+```
+
+Nomes descritivos deixam a intenção explícita e facilitam manutenção.
+
+Se a condição crescer muito, extraia para uma função:
+
+```tsx
+const canUserEditProfile = checkUserPermissions(user);
+```
+
+## Evite inline styles
+
+Inline styles dificultam:
+- reutilização
+- manutenção
+- padronização visual
+- organização dos estilos
+
+❌ Problema comum
+
+```tsx
+<div style={{ marginTop: 12, color: "red" }}>
+```
+
+✅ Prefira
+
+```tsx
+<Container variant="error" />
+```
+
+ou:
+
+```tsx
+<div className={styles.errorContainer}>
+```
+
+Separar estilos da lógica melhora reutilização e consistência visual.
+
+## Evite renderização condicional complexa no `return`
+
+Muitas condições dentro do JSX tornam o componente difícil de ler.
+
+❌ Difícil manutenção
+
+```tsx
+return (
+  <>
+    {isLoading ? (
+      ...
+    ) : hasError ? (
+      ...
+    ) : (
+      ...
+    )}
+  </>
+);
+```
+
+✅ Prefira simplificar antes do JSX
+
+```tsx
+if (isLoading) {
+  return <Loading />;
+}
+
+if (hasError) {
+  return <Error />;
+}
+
+return <Content />;
+```
+
+Isso deixa o fluxo mais claro e reduz aninhamentos desnecessários.
+
+## Evite redundância de estilização
+
+Repetir estilos gera:
+- inconsistência visual
+- manutenção difícil
+- duplicação
+
+✅ Prefira composição
+
+```tsx
+<Button variant="primary" />
+<Button variant="secondary" />
+```
+
+Ao invés de recriar estilos manualmente.
+
+Centralizar estilos melhora reaproveitamento e manutenção.
+
+## Evite textos literais nos componentes
+
+Hardcoded strings dificultam:
+- internacionalização
+- manutenção
+- reaproveitamento
+
+```tsx
+// ❌ Evite
+
+<Typography>
+  Usuário não encontrado
+</Typography>
+
+// ✅ Prefira
+
+<Typography>
+  {MESSAGES.USER_NOT_FOUND}
+</Typography>
+```
+
+Centralizar textos facilita tradução, padronização e manutenção.  
+**Sugestão:** Criar arquivo no utils com todos os textos em um objeto constante.
+
+## Simplifique o código
+
+Código menor nem sempre significa código mais simples.
+
+❌ Problema comum
+
+```tsx
+normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+```
+
+Embora funcione, a intenção não fica clara.
+
+✅ Melhor abordagem
+
+```tsx
+function removeAccents(text:string){
+    return text.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+const normalizedText = removeAccents(text);
+```
+
+Nomes descritivos deixam o código mais legível e facilitam manutenção.
+
+Regra prática:
+
+- prefira código fácil de entender
+- fácil de modificar
+- fácil de debugar
+
+Mesmo que ele tenha algumas linhas a mais.
+
+## Use tipos genéricos em componentes reutilizáveis
+
+Componentes reutilizáveis não devem depender de tipos específicos da aplicação.
+
+❌ Problema comum
+
+```tsx
+type Props = {
+  name: TabBarRoutesEnum;
+};
+```
+
+Agora o componente só funciona nesse contexto específico.
+
+✅ Melhor abordagem
+
+```tsx
+type Props<T> = {
+  name: T;
+};
+```
+
+Uso:
+
+```tsx
+<TabBar<TabBarRoutesEnum> />
+```
+
+Isso aumenta reutilização, flexibilidade e inferência de tipos no TypeScript.
+
+## Principais referências:
+
+[React Docs](https://react.dev)  
+[React Style Guide (Airbnb)](https://airbnb.io/javascript/react/)  
+[Clean Code JavaScript](https://github.com/ryanmcdermott/clean-code-javascript)  
+[TypeScript Handbook](https://www.typescriptlang.org/docs/)  
+[MDN Web Docs](https://developer.mozilla.org/en-US/) 
+[Kent C. Dodds Blog](https://kentcdodds.com/blog)  
+[Dan Abramov Articles](https://overreacted.io/)  
