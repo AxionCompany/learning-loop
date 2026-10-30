@@ -1,4 +1,238 @@
 ---
-title: Clean Code - Funções e Classes
-description: Nesta seção continuamos nossa jornada por Clean Code e boas práticas, focando especificamente em funções, classes e muito mais.
+title: Estruturação de Código — Funções e Classes
+description: Como estruturar funções e classes coesas, enxutas e com responsabilidade única.
 ---
+
+Mesmo com bons nomes, um sistema se torna difícil de manter quando funções e classes acumulam responsabilidades demais. Estruturar bem o código significa dividir problemas complexos em unidades pequenas, coesas e fáceis de testar isoladamente.
+
+---
+
+## Funções
+
+A primeira regra sobre funções no *Clean Code* é que elas devem ser pequenas. A segunda regra é que elas devem ser menores ainda. Uma função bem estruturada resolve apenas uma tarefa, em um único nível de detalhe, e recebe poucos argumentos.
+
+### Características
+
+- **Responsabilidade Única (*Do One Thing*):** cada função deve fazer apenas uma coisa e fazê-la bem. Se você usa a palavra *"e"* para descrever o que uma função faz (ex.: *"valida o pedido **e** calcula o frete **e** gera o recibo"*), ela faz coisas demais.
+- **Um único nível de abstração por função:** evite misturar regras de negócio de alto nível com detalhes técnicos de baixo nível (ex.: regex, manipulação de strings ou formatação manual) dentro do mesmo bloco.
+- **Evitar parâmetros excessivos:** o ideal é que uma função tenha de **0 a 2 parâmetros**. Quando precisar de 3 ou mais parâmetros, agrupe-os em um **objeto tipado (`interface`)**.
+- **Evitar argumentos booleanos (*Flag Arguments*):** passar `true` ou `false` para uma função indica que ela faz duas coisas diferentes dependendo do parâmetro.
+
+---
+
+### Exemplo 1 — Responsabilidade Única (*Functions should do one thing*)
+
+```typescript
+// ❌ Antes: busca o cliente no banco, verifica se está ativo e envia e-mail no mesmo bloco
+function emailActiveClients(clients: Client[]) {
+  clients.forEach((client) => {
+    const clientRecord = database.lookup(client);
+    if (clientRecord.isActive()) {
+      email(client);
+    }
+  });
+}
+
+// ✅ Depois: cada função faz apenas uma coisa e elas se compõem com clareza
+function emailActiveClients(clients: Client[]) {
+  clients.filter(isActiveClient).forEach(email);
+}
+
+function isActiveClient(client: Client) {
+  const clientRecord = database.lookup(client);
+  return clientRecord.isActive();
+}
+```
+
+- **Por que o segundo formato é melhor?**
+  - A verificação `isActiveClient` foi isolada da ação de disparo de e-mail, permitindo reutilizá-la e testá-la separadamente.
+  - A função principal `emailActiveClients` lê-se de forma declarativa: *filtre os clientes ativos e envie um e-mail para cada um*.
+
+---
+
+### Exemplo 2 — Evitando parâmetros excessivos com Objetos (`type` / `interface`)
+
+```typescript
+// ❌ Antes: 4 parâmetros soltos exigem lembrar a ordem e o significado de "true" na chamada
+function createMenu(title: string, body: string, buttonText: string, cancellable: boolean) {
+  // ...
+}
+
+createMenu('Foo', 'Bar', 'Baz', true);
+
+// ✅ Depois: parâmetros agrupados em um objeto tipado e autoexplicativo
+type MenuOptions = {
+  title: string;
+  body: string;
+  buttonText: string;
+  cancellable: boolean;
+};
+
+function createMenu(options: MenuOptions) {
+  // ...
+}
+
+createMenu({
+  title: 'Foo',
+  body: 'Bar',
+  buttonText: 'Baz',
+  cancellable: true
+});
+```
+
+- **Vantagens do código limpo:**
+  - Na chamada de `createMenu`, cada propriedade tem nome explícito (`cancellable: true`) e não depende da ordem dos argumentos.
+  - Facilita a leitura da assinatura e a criação de testes unitários.
+
+---
+
+### Exemplo 3 — Evitando argumentos booleanos (*Flag Arguments*)
+
+```typescript
+// ❌ Antes: a flag booleana "temp" indica que a função faz duas coisas diferentes
+function createFile(name: string, temp: boolean) {
+  if (temp) {
+    fs.create(`./temp/${name}`);
+  } else {
+    fs.create(name);
+  }
+}
+
+// ✅ Depois: funções separadas e diretas para cada intenção
+function createTempFile(name: string) {
+  createFile(`./temp/${name}`);
+}
+
+function createFile(name: string) {
+  fs.create(name);
+}
+```
+
+- **Vantagens do código limpo:**
+  - Quem lê `createTempFile('relatorio.pdf')` entende imediatamente o comportamento, sem precisar adivinhar o que significa o segundo parâmetro em `createFile('relatorio.pdf', true)`.
+
+---
+
+## Classes
+
+Assim como as funções, as classes devem ser pequenas. Porém, enquanto medimos o tamanho de uma função em linhas de código, **medimos o tamanho de uma classe pela quantidade de responsabilidades que ela assume**.
+
+### Características
+
+- **Evitar Classes "Deus" (*God Classes*):** uma *God Class* é uma classe centralizadora que sabe demais e faz demais — controla interface, gerencia usuários, assinaturas e navegação. Ela se torna um gargalo de manutenção.
+- **Limitar o número de métodos e atributos:** uma classe com dezenas de métodos e atributos geralmente esconde várias classes menores querendo sair.
+- **Alta coesão e baixo acoplamento:** uma classe é coesa quando seus métodos utilizam seus atributos em conjunto. Se um grupo de métodos usa apenas um atributo e outro grupo usa outro atributo, é sinal de que essa classe deve ser dividida.
+
+---
+
+### Exemplo 1 — Classes devem ser pequenas (Evitando *God Classes*)
+
+```typescript
+// ❌ Antes: classe inchada ("God Class") que acumula idioma, progresso, usuários, assinaturas e rotas
+class Dashboard {
+  getLanguage(): string { /* ... */ }
+  setLanguage(language: string): void { /* ... */ }
+  showProgress(): void { /* ... */ }
+  hideProgress(): void { /* ... */ }
+  isDirty(): boolean { /* ... */ }
+  disable(): void { /* ... */ }
+  enable(): void { /* ... */ }
+  addSubscription(subscription: Subscription): void { /* ... */ }
+  removeSubscription(subscription: Subscription): void { /* ... */ }
+  addUser(user: User): void { /* ... */ }
+  removeUser(user: User): void { /* ... */ }
+  goToHomePage(): void { /* ... */ }
+  updateProfile(details: UserDetails): void { /* ... */ }
+  getVersion(): string { /* ... */ }
+  // ...
+}
+
+// ✅ Depois: classe enxuta focada apenas no controle essencial do Dashboard
+class Dashboard {
+  disable(): void { /* ... */ }
+  enable(): void { /* ... */ }
+  getVersion(): string { /* ... */ }
+}
+
+// As demais responsabilidades (usuários, assinaturas, navegação) são movidas para classes próprias
+```
+
+- **Por que isso é Clean Code?**
+  - Seguindo o *Princípio da Responsabilidade Única (SRP)*, `Dashboard` deixa de concentrar regras de todo o sistema e passa a ter apenas um motivo para mudar.
+
+---
+
+### Exemplo 2 — Alta coesão e baixo acoplamento
+
+```typescript
+// ❌ Antes: baixa coesão — metade dos métodos usa "db" e a outra metade usa "emailSender"
+class UserManager {
+  constructor(
+    private readonly db: Database,
+    private readonly emailSender: EmailSender
+  ) {}
+
+  async getUser(id: number): Promise<User> {
+    return await this.db.users.findOne({ id });
+  }
+
+  async getTransactions(userId: number): Promise<Transaction[]> {
+    return await this.db.transactions.find({ userId });
+  }
+
+  async sendGreeting(): Promise<void> {
+    await this.emailSender.send('Welcome!');
+  }
+
+  async sendNotification(text: string): Promise<void> {
+    await this.emailSender.send(text);
+  }
+
+  async sendNewsletter(): Promise<void> {
+    // ...
+  }
+}
+
+// ✅ Depois: alta coesão — classes separadas onde todos os métodos usam o atributo da própria classe
+class UserService {
+  constructor(private readonly db: Database) {}
+
+  async getUser(id: number): Promise<User> {
+    return await this.db.users.findOne({ id });
+  }
+
+  async getTransactions(userId: number): Promise<Transaction[]> {
+    return await this.db.transactions.find({ userId });
+  }
+}
+
+class UserNotifier {
+  constructor(private readonly emailSender: EmailSender) {}
+
+  async sendGreeting(): Promise<void> {
+    await this.emailSender.send('Welcome!');
+  }
+
+  async sendNotification(text: string): Promise<void> {
+    await this.emailSender.send(text);
+  }
+
+  async sendNewsletter(): Promise<void> {
+    // ...
+  }
+}
+```
+
+- **Vantagens do código limpo:**
+  - **Alta coesão:** todos os métodos de `UserService` utilizam `db`, e todos os métodos de `UserNotifier` utilizam `emailSender`.
+  - **Baixo acoplamento:** quem precisa apenas consultar transações do usuário (`UserService`) não é mais obrigado a instanciar ou fornecer um `EmailSender`.
+
+---
+
+### Referências
+
+- **Clean Code: A Handbook of Agile Software Craftsmanship** — Robert C. Martin (*Uncle Bob*)
+- **Refactoring: Improving the Design of Existing Code** — Martin Fowler
+- [Clean Code // Dicionário do Programador](https://www.youtube.com/watch?reload=9&v=ln6t3uyTveQ)
+- [Clean Code - gov.br](https://www.gov.br/governodigital/pt-br/estrategias-e-governanca-digital/startupgovbr/guia-gps/pages/5-saiba-mais/praticas-de-engenharia-de-software/clean-code)
+- [Clean Code TypeScript](https://github.com/labs42io/clean-code-typescript)

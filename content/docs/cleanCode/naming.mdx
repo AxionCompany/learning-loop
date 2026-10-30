@@ -1,0 +1,184 @@
+---
+title: Boas Práticas de Nomeação
+description: Como escolher nomes claros e expressivos para variáveis, funções, classes e objetos.
+---
+
+Escolher bons nomes é uma das decisões mais importantes no dia a dia do desenvolvimento. Nomes são a principal ferramenta de comunicação do código: quando bem escolhidos, eliminam a necessidade de comentários explicativos e permitem que qualquer pessoa entenda a regra de negócio imediatamente.
+
+> *"Existem apenas duas coisas difíceis em Ciência da Computação: invalidação de cache e dar nome às coisas."* — **Phil Karlton**
+
+---
+
+## Variáveis
+
+Variáveis guardam o estado e os dados da aplicação. Um bom nome de variável deve responder a três perguntas sem que o leitor precise investigar o restante do arquivo: **por que ela existe**, **o que ela armazena** e **como ela é utilizada**.
+
+### Características
+
+- **Nomes que revelam intenção:** o nome deve deixar explícito o significado e até a unidade de medida do valor (ex.: `delayInMilliseconds` em vez de `delay`).
+- **Evitar nomes genéricos (*ruído*):** termos como `data`, `info`, `temp`, `val`, `item` ou `aux` são vagos e não acrescentam informação real sobre o conteúdo.
+- **Nomes pronunciáveis e pesquisáveis:** evite siglas obscuras ou variáveis de uma única letra (`d`, `e`, `x`), facilitando conversas técnicas e buscas no projeto.
+- **Booleanos afirmativos:** variáveis booleanas devem soar como perguntas de sim/não, usando prefixos como `is`, `has`, `can` ou `should` (ex.: `isActive`, `hasPermission`).
+- **Coleções no plural:** arrays e listas devem indicar claramente que contêm múltiplos itens (ex.: `activeUsers` em vez de `userList` ou `userData`).
+
+### Exemplo — Nomeação de variáveis
+
+```typescript
+// ❌ Antes: abreviações impronunciáveis, números mágicos e mapeamento mental (u, s, t)
+type DtaRcrd102 = {
+  genymdhms: Date;
+  modymdhms: Date;
+  pszqint: number;
+};
+
+setTimeout(restart, 86400000);
+
+const u = getUser();
+const s = getSubscription();
+const t = charge(u, s);
+
+// ✅ Depois: nomes pronunciáveis, constantes pesquisáveis e variáveis explícitas
+type Customer = {
+  generationTimestamp: Date;
+  modificationTimestamp: Date;
+  recordId: number;
+};
+
+const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000; // 86400000
+setTimeout(restart, MILLISECONDS_PER_DAY);
+
+const user = getUser();
+const subscription = getSubscription();
+const transaction = charge(user, subscription);
+```
+
+- **Por que o segundo formato é melhor?**
+  - **Pronunciável:** `Customer` e `generationTimestamp` podem ser lidos e discutidos facilmente, ao contrário de `DtaRcrd102` e `genymdhms`.
+  - **Pesquisável:** `MILLISECONDS_PER_DAY` deixa explícita a unidade de tempo e substitui o número mágico `86400000`.
+  - **Sem mapeamento mental:** `user`, `subscription` e `transaction` dispensam adivinhar o que significam `u`, `s` e `t`.
+
+---
+
+## Funções
+
+Funções representam as **ações** e comportamentos do sistema. Por isso, seus nomes e sua estrutura devem deixar claro *o que está sendo feito*, sem ambiguidades.
+
+### Características
+
+- **Verbos no início e intenção explícita:** toda função executa uma ação ou consulta, portanto deve deixar claro exatamente o que altera ou retorna (ex.: `addMonthToDate` em vez de `addToDate`).
+- **Consistência de vocabulário:** escolha um único termo por conceito em todo o projeto (evite misturar `getUserInfo`, `getUserDetails` e `getUserData` para representar a mesma busca).
+- **Condicionais afirmativas:** prefira nomes de funções booleanas na forma positiva (`isEmailUsed` em vez de `isEmailNotUsed`), evitando duplas negações difíceis de ler.
+
+### Exemplo — Nomeação de funções e consistência de vocabulário
+
+```typescript
+// ❌ Antes: nome vago sobre o que é adicionado, vocabulário duplicado e condicional negativa
+function addToDate(date: Date, month: number): Date {
+  // ...
+}
+
+const date = new Date();
+addToDate(date, 1); // Difícil saber pelo nome se adiciona 1 dia, 1 mês ou 1 ano
+
+function getUserInfo(): User;
+function getUserDetails(): User;
+function getUserData(): User;
+
+function isEmailNotUsed(email: string): boolean {
+  // ...
+}
+
+if (isEmailNotUsed(email)) {
+  // ...
+}
+
+// ✅ Depois: ação explícita no nome, vocabulário unificado e função booleana positiva
+function addMonthToDate(date: Date, month: number): Date {
+  // ...
+}
+
+const date = new Date();
+addMonthToDate(date, 1);
+
+function getUser(): User;
+
+function isEmailUsed(email: string): boolean {
+  // ...
+}
+
+if (!isEmailUsed(email)) {
+  // ...
+}
+```
+
+- **Vantagens do código limpo:**
+  - **Clareza imediata:** `addMonthToDate(date, 1)` informa exatamente a unidade manipulada sem precisar abrir a implementação da função.
+  - **Vocabulário único:** `getUser()` evita que desenvolvedores fiquem em dúvida sobre qual variação chamar.
+
+---
+
+## Classes e objetos
+
+Classes, tipos e objetos modelam os conceitos e entidades do domínio dentro do software. Seus nomes devem ser diretos, padronizados e sem repetições desnecessárias.
+
+### Características
+
+- **Substantivos no singular e `PascalCase`:** classes e tipos definem o molde de uma entidade, por isso devem estar sempre no singular e em *PascalCase* (`Customer`, `Car`, `Animal` — e não `animal`).
+- **Evitar contexto desnecessário:** se o nome da classe ou tipo já informa o contexto (ex.: `Car`), não repita esse prefixo nos atributos (`make`, `model` e `color` em vez de `carMake`, `carModel` e `carColor`).
+- **Evitar sufixos vagos:** palavras como `Manager`, `Processor`, `Data` ou `Info` costumam poluir o nome sem esclarecer a responsabilidade real.
+
+### Exemplo — Tipos, objetos e remoção de contexto redundante
+
+```typescript
+// ❌ Antes: tipo fora do padrão PascalCase e repetição desnecessária do prefixo "car"
+type animal = { /* ... */ };
+
+type Car = {
+  carMake: string;
+  carModel: string;
+  carColor: string;
+};
+
+function print(car: Car): void {
+  console.log(`${car.carMake} ${car.carModel} (${car.carColor})`);
+}
+
+// ✅ Depois: PascalCase padronizado e propriedades limpas, sem repetir o contexto do objeto
+type Animal = { /* ... */ };
+
+type Car = {
+  make: string;
+  model: string;
+  color: string;
+};
+
+function print(car: Car): void {
+  console.log(`${car.make} ${car.model} (${car.color})`);
+}
+```
+
+- **Por que isso é Clean Code?**
+  - **Sem redundância:** como a variável já é do tipo `Car`, acessar `car.make` e `car.color` é muito mais limpo e natural do que `car.carMake` e `car.carColor`.
+  - **Padronização visual:** o uso de `PascalCase` em `Animal` e `Car` diferencia imediatamente tipos e classes de variáveis comuns.
+
+---
+
+## Resumo Rápido (Guia de Consulta)
+
+| Elemento | Convenção Recomendada | Evitar ( ❌ ) | Preferir ( ✅ ) |
+| :--- | :--- | :--- | :--- |
+| **Variáveis comuns** | Substantivo descritivo (`camelCase`) | `u`, `s`, `genymdhms` | `user`, `subscription`, `generationTimestamp` |
+| **Booleanos** | Afirmativo com `is`, `has`, `can` | `isEmailNotUsed(email)` | `isEmailUsed(email)`, `isSubscriptionActive` |
+| **Constantes** | `UPPER_SNAKE_CASE` pesquisável | `86400000` | `MILLISECONDS_PER_DAY` |
+| **Funções / Métodos** | Verbo explícito e consistente | `addToDate()`, `getUserData()` | `addMonthToDate()`, `getUser()` |
+| **Classes / Tipos** | `PascalCase` sem contexto redundante | `type animal`, `car.carMake` | `type Animal`, `car.make` |
+
+---
+
+### Referências
+
+- **Clean Code: A Handbook of Agile Software Craftsmanship** — Robert C. Martin (*Uncle Bob*)
+- **Refactoring: Improving the Design of Existing Code** — Martin Fowler
+- [Clean Code // Dicionário do Programador](https://www.youtube.com/watch?reload=9&v=ln6t3uyTveQ)
+- [Clean Code - gov.br](https://www.gov.br/governodigital/pt-br/estrategias-e-governanca-digital/startupgovbr/guia-gps/pages/5-saiba-mais/praticas-de-engenharia-de-software/clean-code)
+- [Clean Code TypeScript](https://github.com/labs42io/clean-code-typescript)
