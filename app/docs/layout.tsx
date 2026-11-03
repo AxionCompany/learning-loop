@@ -66,8 +66,13 @@ export default function Layout({ children }: { children: ReactNode }) {
                   },
                   {
                     type: "page",
+                    url: "/docs/cleanCode/naming",
+                    name: "Boas Práticas de Nomeação",
+                  },
+                  {
+                    type: "page",
                     url: "/docs/cleanCode/functionsAndClasses",
-                    name: "Funções e Classes",
+                    name: "Estruturação de Código",
                   },
                   {
                     type: "page",

@@ -2,3 +2,181 @@
 title: Clean Code
 description: Um conjunto bem definido de padrões, convenções e boas práticas para escrever código fácil de ler, entender e manter.
 ---
+
+## O que caracteriza código limpo
+
+Código limpo (*Clean Code*) é aquele que qualquer desenvolvedor da equipe consegue ler, entender e modificar com facilidade. Como definiu Bjarne Stroustrup e popularizou Robert C. Martin (*Uncle Bob*), um código limpo é direto, elegante e faz apenas uma coisa bem feita — sem esconder a intenção do autor por trás de complexidade desnecessária.
+
+### Características
+
+- **Nomes reveladores de intenção:** variáveis, funções e classes possuem nomes claros que explicam *o que* são e *por que* existem, sem exigir adivinhação.
+- **Responsabilidade única (foco):** cada função, método ou módulo resolve um único problema e o faz bem.
+- **Simplicidade e clareza:** o fluxo de execução é direto, previsível e sem construções confusas ou truques desnecessários.
+- **Baixa duplicação (DRY):** evita repetição de regras de negócio espalhadas pelo sistema.
+- **Expressividade:** o próprio código se documenta; comentários são usados apenas para explicar o *contexto/porquê*, e não *o que* uma linha confusa faz.
+- **Testabilidade:** é estruturado em partes pequenas e desacopladas, facilitando a criação e manutenção de testes automatizados.
+
+### Exemplo — código limpo e expressivo
+
+```typescript
+// ❌ Intenção implícita: exige interpretar a regra manualmente na condição
+if (subscription.isTrial || account.balance > 0) {
+  // ...
+}
+
+// ✅ Código limpo e expressivo: a função nomeia e documenta a regra de negócio
+function canActivateService(subscription: Subscription, account: Account) {
+  return subscription.isTrial || account.balance > 0;
+}
+
+if (canActivateService(subscription, account)) {
+  // ...
+}
+```
+
+- **Por que este código é limpo?**
+  - Lê-se quase como uma frase em linguagem natural (`if (canActivateService(...))`).
+  - A função `canActivateService` encapsula a condicional e explica a regra sem precisar de comentários.
+  - A verificação tem uma única responsabilidade e é trivial de testar isoladamente.
+
+---
+
+## Diferença entre código que funciona e código de qualidade
+
+Fazer o código funcionar é apenas metade do trabalho. Um código que "apenas funciona" atende máquinas no curto prazo; um código de qualidade atende tanto máquinas quanto pessoas ao longo de todo o ciclo de vida do produto.
+
+> *"Qualquer tolo pode escrever código que um computador entenda. Bons programadores escrevem código que humanos podem entender."* — **Martin Fowler**
+
+### Comparativo
+
+| Aspecto | Código que apenas funciona | Código de qualidade (Clean Code) |
+| :--- | :--- | :--- |
+| **Foco principal** | Resolver o problema imediato a qualquer custo | Resolver o problema mantendo o sistema evolutivo |
+| **Leitura** | Exige esforço mental para "decifrar" a lógica | Leitura fluida, quase como um texto bem escrito |
+| **Alterações** | Rígido e frágil: mudar um ponto quebra outros | Flexível: fácil de estender ou adaptar |
+| **Efeitos colaterais** | Comportamentos ocultos e mutações inesperadas | Comportamento previsível e responsabilidades isoladas |
+| **Testes** | Difícil de testar isoladamente | Fácil de validar com testes unitários |
+
+### Exemplo — código que funciona vs. código de qualidade
+
+```typescript
+// ❌ Código que apenas funciona: exige esforço mental para descobrir quem é a1, a2 e a3
+function between<T>(a1: T, a2: T, a3: T): boolean {
+  return a2 <= a1 && a1 <= a3;
+}
+
+// ✅ Código de qualidade: nomes claros revelam imediatamente o papel de cada parâmetro
+function between<T>(value: T, left: T, right: T): boolean {
+  return left <= value && value <= right;
+}
+```
+
+---
+
+## A importância de um código legível e sustentável
+
+Durante o desenvolvimento de software, **lemos código muito mais vezes do que escrevemos** (segundo *Uncle Bob*, a proporção passa de **10 para 1**). Portanto, tornar a leitura rápida é a forma mais eficaz de acelerar a escrita e a entrega de novas funcionalidades.
+
+### Por que investir em código sustentável?
+
+- **Redução da carga cognitiva:** menos tempo gasto tentando entender o que o código antigo faz significa mais energia focada na regra de negócio.
+- **Produtividade contínua:** sistemas sem cuidado acumulam *dívida técnica*, fazendo com que entregas simples passem a demorar dias ou semanas.
+- **Menos bugs em produção:** quanto mais transparente é a lógica, menor a chance de introduzir regressões ao corrigir um problema.
+- **Onboarding e colaboração ágeis:** novos integrantes ou colegas de outras frentes conseguem dar manutenção sem depender exclusivamente do autor original.
+- **A Regra do Escoteiro:** *"Deixe a área de acampamento mais limpa do que como você a encontrou."* Pequenas melhorias contínuas evitam que o sistema se degrade com o tempo.
+
+### Exemplo — código preparado para evoluir com segurança
+
+```typescript
+// ❌ Difícil de manter: exige alterar a função e encadear novos "if/else" a cada novo veículo
+function travelToTexas(vehicle: Bicycle | Car) {
+  if (vehicle instanceof Bicycle) {
+    vehicle.pedal(currentLocation, new Location('texas'));
+  } else if (vehicle instanceof Car) {
+    vehicle.drive(currentLocation, new Location('texas'));
+  }
+}
+
+// ✅ Sustentável: apoia-se em um contrato único (move), facilitando a evolução do sistema
+type Vehicle = Bicycle | Car;
+
+function travelToTexas(vehicle: Vehicle) {
+  vehicle.move(currentLocation, new Location('texas'));
+}
+```
+
+- **Impacto na sustentabilidade:**
+  - Em vez de checar manualmente o tipo de cada veículo (`instanceof`) e chamar métodos diferentes (`pedal`, `drive`), padronizamos a ação em `vehicle.move(...)`, evitando espalhar condicionais frágeis pelo sistema.
+
+---
+
+## Exemplo de antes e depois de aplicar Clean Code
+
+Abaixo vemos como substituir um laço imperativo com mutação de variável por uma abordagem declarativa e funcional torna o código mais enxuto e previsível.
+
+### Antes (imperativo e com variável mutável)
+
+```typescript
+const contributions = [
+  {
+    name: 'Uncle Bobby',
+    linesOfCode: 500
+  }, {
+    name: 'Suzie Q',
+    linesOfCode: 1500
+  }, {
+    name: 'Jimmy Gosling',
+    linesOfCode: 150
+  }, {
+    name: 'Gracie Hopper',
+    linesOfCode: 1000
+  }
+];
+
+let totalOutput = 0;
+
+for (let i = 0; i < contributions.length; i++) {
+  totalOutput += contributions[i].linesOfCode;
+}
+```
+
+- **Problemas do código acima:**
+  - Depende de uma variável mutável (`let totalOutput = 0`) que pode ser alterada acidentalmente em outros pontos.
+  - Foca em *como* iterar (controle manual do índice `i`) em vez de expressar diretamente *o que* está sendo calculado.
+
+### Depois (aplicando boas práticas de Clean Code)
+
+```typescript
+const contributions = [
+  {
+    name: 'Uncle Bobby',
+    linesOfCode: 500
+  }, {
+    name: 'Suzie Q',
+    linesOfCode: 1500
+  }, {
+    name: 'Jimmy Gosling',
+    linesOfCode: 150
+  }, {
+    name: 'Gracie Hopper',
+    linesOfCode: 1000
+  }
+];
+
+const totalOutput = contributions
+  .reduce((totalLines, output) => totalLines + output.linesOfCode, 0);
+```
+
+- **Vantagens após aplicar Clean Code:**
+  - **Imutabilidade:** `totalOutput` passa a ser uma constante (`const`), calculada em uma única expressão.
+  - **Estilo declarativo:** o método `.reduce()` expressa claramente a intenção de somar as linhas de código sem ruído de controle de índices.
+
+---
+
+### Referências
+
+- **Clean Code: A Handbook of Agile Software Craftsmanship** — Robert C. Martin (*Uncle Bob*)
+- **Refactoring: Improving the Design of Existing Code** — Martin Fowler
+- [Clean Code // Dicionário do Programador](https://www.youtube.com/watch?reload=9&v=ln6t3uyTveQ)
+- [Clean Code - gov.br](https://www.gov.br/governodigital/pt-br/estrategias-e-governanca-digital/startupgovbr/guia-gps/pages/5-saiba-mais/praticas-de-engenharia-de-software/clean-code)
+- [Clean Code TypeScript](https://github.com/labs42io/clean-code-typescript)
