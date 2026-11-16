@@ -1,4 +1,224 @@
 ---
 title: Comentários
-description: Boas práticas sobre comentários
+description: Como o código comunica a própria intenção e quando um comentário ainda é necessário.
 ---
+
+Comentários existem para acrescentar uma informação que o código não consegue carregar sozinho. Em *Clean Code*, Robert C. Martin (*Uncle Bob*) trata o comentário como complemento: nomes, funções pequenas e uma estrutura simples é que devem explicar o que o programa faz.
+
+> *"Não comente código ruim. Reescreva-o."* — **Brian W. Kernighan** e **P. J. Plauger**, citados em *Clean Code*
+
+---
+
+## O código deve falar por si mesmo
+
+Um código bem escrito comunica a própria intenção. Quando uma implementação só fica compreensível depois de vários comentários, o problema costuma estar na clareza do código, e o comentário vira uma compensação.
+
+O código explica **o que** está sendo feito. O comentário, quando faz falta, explica **por que** aquela decisão foi tomada.
+
+### Características do código autoexplicativo
+
+- **Intenção visível no código:** nomes e funções pequenas dispensam a frase que só repete a linha de baixo.
+- **Comentário como complemento:** ele entra quando existe contexto que a implementação não expressa — uma regra externa, um limite, um risco.
+- **Poucos comentários como sinal:** uma função que precisa ser narrada linha a linha é candidata a ser reescrita, com outro nome ou outra divisão.
+
+### Exemplo — regra escondida atrás de um comentário
+
+```typescript
+// ❌ Antes: a condição não deixa evidente o significado de status === 1
+// Verifica se o usuário pode acessar o sistema
+if (user.status === 1 && user.balance > 0) {
+  // ...
+}
+
+// ✅ Depois: a função nomeia a regra e o status deixa de ser um número mágico
+enum UserStatus {
+  ACTIVE = 1,
+}
+
+function canAccessSystem(user: User): boolean {
+  return user.status === UserStatus.ACTIVE && user.balance > 0;
+}
+
+if (canAccessSystem(user)) {
+  // ...
+}
+```
+
+- **Por que o segundo formato é melhor?**
+  - `canAccessSystem` diz a regra de negócio. Quem lê o `if` entende a decisão sem abrir um comentário.
+  - `UserStatus.ACTIVE` substitui o `1`. O campo continua sendo `status`; o que muda é o valor opaco.
+  - A condição passa a ter um nome e pode ser testada sozinha.
+
+---
+
+## Comentários que agregam valor
+
+O comentário vale a pena quando guarda um contexto que um nome, por melhor que seja, não substitui: a origem de uma regra, o risco de uma chamada, um limite conhecido ou o contrato de uma API pública.
+
+### Quando um comentário é útil
+
+- **Intenção e contexto:** explicam uma decisão que não está na operação em si (um prazo da operadora, uma regra comercial, uma restrição de negócio).
+- **Alerta:** avisam consequência, custo ou risco que a assinatura da função não mostra. O aviso envelhece com o código: se o comportamento mudar, o comentário muda no mesmo commit.
+- **Limitação ou solução temporária:** registram por que o código ainda não está na forma definitiva. `TODO` e `FIXME` só ajudam se forem revistos; pendência esquecida vira ruído.
+- **Documentação de API pública:** descreve o contrato de uma função, método ou tipo usado por outras pessoas — parâmetros ambíguos, retorno, exceções e condições de uso. Não repete o que o nome e a assinatura já mostram.
+
+### Exemplo 1 — intenção e alerta
+
+```typescript
+// ✅ Intenção: o número 2 só faz sentido com o prazo da operadora
+// Mantemos a margem de 2 dias porque a operadora
+// pode levar até 48 horas para confirmar o pagamento.
+const expirationDate = addDays(paymentDate, 2);
+
+// ✅ Alerta: a assinatura não mostra o custo da chamada
+// WARNING: Esta operação pode levar alguns segundos
+// devido à quantidade de registros consultados no serviço externo.
+await externalService.syncData();
+```
+
+- **Por que esses comentários ficam?**
+  - Nenhum dos dois repete a linha seguinte. Os dois respondem a uma pergunta que o código deixa em aberto: *por que dois dias?* e *o que essa chamada custa?*
+  - O alerta protege quem for chamar `syncData` num fluxo que não pode esperar.
+  - Esse aviso só continua verdadeiro enquanto a chamada for lenta. Se ela passar a falhar por limite de requisições, ou deixar de bloquear o fluxo, o comentário precisa ser reescrito. Uma duração solta mente com facilidade; uma consequência estável (bloqueia o checkout, consome a cota da API) envelhece menos.
+
+### Exemplo 2 — limitação conhecida e regra externa
+
+```typescript
+// ✅ Limitação: o parser existe só por causa do formato antigo dd/mm/aaaa
+// TODO: Remover o parser legado quando a API
+// passar a retornar as datas no formato ISO 8601.
+const [day, month, year] = apiDate.split('/');
+const formattedDate = new Date(`${year}-${month}-${day}`);
+
+const FREE_SHIPPING_MINIMUM_IN_BRL = 500;
+
+// ✅ Regra externa: a constante guarda o limiar; o comentário guarda a origem
+// Conforme a regra comercial, pedidos acima deste valor
+// não possuem cobrança de frete.
+if (orderTotal > FREE_SHIPPING_MINIMUM_IN_BRL) {
+  shippingCost = 0;
+}
+```
+
+- **Por que esses comentários ficam?**
+  - O `TODO` amarra o parser a uma saída concreta: a API deixar de enviar `dd/mm/aaaa`. Um `new Date(apiDate)` continuaria necessário mesmo com ISO 8601, e o comentário prometeria apagar uma conversão que ainda existiria.
+  - O limiar de frete fica pesquisável na constante. O comentário preserva a origem comercial da regra, que o número sozinho perderia.
+
+### Exemplo 3 — documentação de API pública
+
+O capítulo 4 chama de comentário de documentação o contrato de uma superfície pública: o que a assinatura não consegue dizer sozinha.
+
+```typescript
+/**
+ * Reserva o estoque pelo prazo da operadora.
+ *
+ * A reserva expira sozinha. Quem chama precisa guardar o id para cancelar antes.
+ *
+ * @param sku - Identificador do produto no catálogo da operadora, não o id interno.
+ * @throws {ReservationRejectedError} Quando a operadora recusa a reserva.
+ * @returns Identificador da reserva, usado no cancelamento.
+ */
+function reserveStock(sku: string, quantity: number): string {
+  // ...
+}
+```
+
+- **Por que esse comentário fica?**
+  - `reserveStock` já diz a ação. O bloco acrescenta o que o tipo esconde: qual id entra, que a reserva expira e qual exceção sai quando a operadora recusa.
+  - Um JSDoc de `calculateTotal` que só repete `price`, `quantity` e "retorna o total" não entra aqui. Ele narra a assinatura.
+
+---
+
+## Comentários que atrapalham
+
+Comentário redundante, desatualizado ou usado para segurar um trecho confuso aumenta o esforço de leitura. O pior caso é o comentário que mente: o código mudou e a frase ao lado continuou descrevendo o comportamento antigo.
+
+### Sinais de comentários prejudiciais
+
+- **Redundantes:** repetem o que o nome ou a instrução já dizem (`// Incrementa o contador` acima de `counter++`).
+- **Desatualizados:** descrevem outra operação. Quem mantém o sistema passa a confiar numa informação falsa.
+- **Muleta de código confuso:** um parágrafo explicando uma condição é um convite para extrair uma função com o nome dessa explicação.
+- **Código comentado:** trecho desativado deixado "por garantia" apodrece. O histórico fica no controle de versão.
+
+### Exemplo — redundância e comentário que mente
+
+```typescript
+// ❌ Antes: o comentário não acrescenta nada
+// Incrementa o contador
+counter++;
+
+// Verifica se o usuário está ativo
+if (user.isActive) {
+  // ...
+}
+
+// ❌ Antes: o texto descreve uma leitura; a função apaga o usuário
+// Retorna os dados do usuário
+function deleteUser(userId: string) {
+  return userRepository.delete(userId);
+}
+
+// ✅ Depois: sem a frase que repete a linha, e sem a frase que contradiz a função
+counter++;
+
+if (user.isActive) {
+  // ...
+}
+
+function deleteUser(userId: string) {
+  return userRepository.delete(userId);
+}
+```
+
+- **Por que o segundo formato é melhor?**
+  - `counter++` e `user.isActive` já são a frase. O comentário só ocupava a leitura.
+  - Em `deleteUser`, o nome da função é a documentação. O comentário antigo ensinava o comportamento errado a quem fosse manter o código.
+
+### Exemplo — código deixado como backup
+
+```typescript
+// ❌ Antes: a versão antiga permanece comentada ao lado da vigente
+// function calculateDiscount(price: number) {
+//   return price * 0.1;
+// }
+
+function calculateDiscount(price: number): number {
+  return price * 0.15;
+}
+
+// ✅ Depois: só a regra atual. A anterior fica no histórico de versão
+function calculateDiscount(price: number): number {
+  return price * 0.15;
+}
+```
+
+- **Por que o segundo formato é melhor?**
+  - O bloco comentado polui a leitura e deixa em aberto qual desconto vale.
+  - O controle de versão recupera o `0.1` se alguém precisar. O arquivo não é cópia de segurança.
+
+---
+
+## Resumo Rápido (Guia de Consulta)
+
+| Situação | Convenção Recomendada | Evitar ( ❌ ) | Preferir ( ✅ ) |
+| :--- | :--- | :--- | :--- |
+| **Regra de negócio** | Nomear a decisão numa função | `// Verifica se é maior de idade` | `isAdult(user)` |
+| **Cálculo ou consulta** | O nome do método diz a ação | `// Calcula o total` | `calculateTotal()` |
+| **Estado já expressivo** | Deixar o código falar | `// Verifica se está ativo` | `user.isActive` |
+| **Decisão pouco óbvia** | Comentar o *porquê*, o risco ou a limitação | Número ou chamada sem contexto | Comentário de intenção, alerta ou `TODO` com saída |
+| **API pública** | Documentar exceção, identificador e condição que a assinatura não mostra | JSDoc que repete o nome do parâmetro | `@throws` e a regra que o tipo não carrega |
+| **Comportamento que mudou** | Atualizar ou apagar o comentário junto com o código | `// Retorna os dados` em `deleteUser` | Função cujo nome descreve o que ela faz agora |
+| **Trecho abandonado** | Remover e confiar no histórico de versão | Bloco inteiro comentado | Código vivo, sem alternativa morta ao lado |
+
+A prática é reler o comentário e perguntar se aquela frase poderia virar um nome. Se puder, o nome é o lugar dela. Se a frase explica uma decisão externa, um risco ou uma limitação, o comentário fica.
+
+---
+
+### Referências
+
+- **Clean Code: A Handbook of Agile Software Craftsmanship** — Robert C. Martin (*Uncle Bob*), capítulo 4 (*Comments*)
+- **The Elements of Programming Style** — Brian W. Kernighan e P. J. Plauger
+- **Refactoring: Improving the Design of Existing Code** — Martin Fowler
+- [Clean Code // Dicionário do Programador](https://www.youtube.com/watch?reload=9&v=ln6t3uyTveQ)
+- [Clean Code - gov.br](https://www.gov.br/governodigital/pt-br/estrategias-e-governanca-digital/startupgovbr/guia-gps/pages/5-saiba-mais/praticas-de-engenharia-de-software/clean-code)
+- [Clean Code TypeScript](https://github.com/labs42io/clean-code-typescript)

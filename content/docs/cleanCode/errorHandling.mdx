@@ -1,4 +1,343 @@
 ---
 title: Tratamento de erros
-description: Boas práticas sobre tratativas de erros
+description: Como lidar com falhas sem misturar a exceção à lógica principal da aplicação.
 ---
+
+Nenhum sistema está livre de falha. Dados inválidos, registro ausente, serviço externo fora do ar e banco indisponível fazem parte do caminho. O tratamento de erros existe para tornar essas situações previsíveis, localizáveis e separadas da regra de negócio.
+
+Em *Clean Code*, Robert C. Martin (*Uncle Bob*) defende que a aplicação saiba reagir à falha de um jeito organizado. O fluxo que descreve o caminho feliz e o fluxo que descreve o que fazer quando ele quebra não devem disputar as mesmas linhas.
+
+> *"O tratamento de erros é importante, mas, se ele obscurece a lógica, está errado."* — **Robert C. Martin**
+
+---
+
+## Exceções em vez de códigos de retorno
+
+Quando uma função devolve um código de erro, quem a chama precisa inspecionar o retorno de cada passo. O caminho normal e o caminho da falha ficam entrelaçados, e o tipo de retorno passa a significar duas coisas ao mesmo tempo: o dado e o problema.
+
+Uma exceção interrompe o fluxo daquela operação e deixa o tratamento num ponto que sabe o que fazer com a falha.
+
+### Características
+
+- **Um retorno, um significado:** a função devolve o resultado quando dá certo. A falha segue por exceção, fora do valor de retorno.
+- **Menos condicionais de protocolo:** quem chama deixa de espalhar `if (result.error)` em volta de cada etapa.
+- **Falha visível:** um código de erro esquecido vira um dado usado como se fosse válido. A exceção não passa em silêncio por quem ignorou o `if`.
+
+### Exemplo — código de erro e exceção
+
+```typescript
+// ❌ Antes: o retorno tanto pode ser o usuário quanto um protocolo de falha
+type UserResult = { error: number } | { data: User };
+
+function getUser(userId: string): UserResult {
+  const user = users.find((item) => item.id === userId);
+
+  if (!user) {
+    return { error: 404 };
+  }
+
+  return { data: user };
+}
+
+const result = getUser("123");
+
+if ("error" in result) {
+  console.log("Usuário não encontrado");
+} else {
+  console.log(result.data);
+}
+
+// ✅ Depois: o caminho feliz lê o usuário; a ausência é uma falha da operação
+function getUser(userId: string) {
+  const user = users.find((item) => item.id === userId);
+
+  if (!user) {
+    throw new Error(`Usuário ${userId} não encontrado`);
+  }
+
+  return user;
+}
+
+try {
+  const user = getUser("123");
+  console.log(user);
+} catch (error) {
+  console.error(error);
+}
+```
+
+- **Por que o segundo formato é melhor?**
+  - `getUser` devolve um usuário. Quem lê a chamada entende o caminho normal sem decodificar `{ error, data }`.
+  - A falha pode ser tratada no ponto da aplicação que conhece a resposta adequada, longe das linhas que só queriam o usuário.
+
+O capítulo 7 recomenda exceção no lugar de um código de erro informal. Um tipo de resultado explícito é outro caso: sucesso e falha são os dois desfechos normais da operação, e quem chama é obrigado a tratar os dois. O exemplo acima critica o protocolo `{ error: 404 }` sem tipo, não toda forma de representar uma falha esperada.
+
+---
+
+## Contexto na mensagem de erro
+
+Saber que "deu erro" não ajuda a corrigir. A mensagem precisa dizer qual operação falhou e com qual dado, no vocabulário de quem vai investigar. Ao embrulhar uma falha de mais baixo nível, a causa original permanece anexada: o contexto novo explica o impacto, e a exceção interna explica a origem.
+
+A mensagem que chega ao usuário final é outra camada. Ela informa o que a pessoa pode fazer, sem senha, token, SQL ou caminho interno.
+
+### Características
+
+- **Operação e contexto:** a frase diz o que falhou e inclui o identificador ou o estado necessário para reproduzir.
+- **Causa preservada:** ao criar uma exceção de mais alto nível, a original vai em `cause`. Em JavaScript e TypeScript isso é o segundo argumento de `Error` (ES2022). O livro pede contexto; `cause` é o mecanismo atual da linguagem para não apagar o erro de baixo.
+- **Público certo:** log e monitoramento recebem o detalhe técnico. A resposta externa recebe uma mensagem segura.
+- **Tipo pensado em quem chama:** quando fizer diferença reagir de um jeito ou de outro, a exceção tem uma classe própria (`UserNotFoundError`, `PaymentRejectedError`), em vez de um `Error` genérico para tudo.
+
+### Exemplo — mensagem opaca e mensagem com contexto
+
+```typescript
+// ❌ Antes: não há operação, nem identificador, nem causa
+throw new Error("Erro!");
+
+// ✅ Depois: a frase localiza a falha e a causa original permanece anexada
+try {
+  await database.connect();
+} catch (error) {
+  throw new Error("Falha ao conectar ao banco de dados", { cause: error });
+}
+
+// ✅ Depois: o identificador entra na mensagem de domínio
+throw new Error(`Não foi possível encontrar o usuário com ID ${userId}`);
+```
+
+- **Por que o segundo formato é melhor?**
+  - "Erro!" obriga a reproduzir o problema às cegas. A mensagem com o id, ou com a operação de conexão, aponta o lugar certo.
+  - `cause` guarda a exceção original: tipo, mensagem e stack trace dela. O erro novo tem o próprio stack. A falha que começou o problema continua acessível para a investigação.
+
+### Exemplo — classes em vez de `Error` genérico
+
+Uma classe por situação deixa a camada de cima decidir pelo tipo, sem ler o texto da mensagem.
+
+```typescript
+class PaymentRejectedError extends Error {
+  constructor() {
+    super("O pagamento foi recusado");
+    this.name = "PaymentRejectedError";
+  }
+}
+
+class DatabaseConnectionError extends Error {
+  constructor(cause: unknown) {
+    super("Não foi possível conectar ao banco de dados", { cause });
+    this.name = "DatabaseConnectionError";
+  }
+}
+```
+
+- **Por que isso é Clean Code?**
+  - Pagamento recusado e banco fora do ar pedem reações diferentes. `instanceof` separa as duas sem depender da frase.
+  - O handler, o log e o teste passam a conhecer o caso. `UserNotFoundError`, mais adiante, é o mesmo recurso aplicado à busca de usuário.
+
+---
+
+## A tratativa não substitui a função
+
+O `try/catch` delimita um trecho em que uma falha é esperada e existe uma reação definida. O livro recomenda escrevê-lo primeiro justamente para marcar esse escopo. Espalhá-lo em volta de conta que não falha, e ainda devolver um valor "neutro", esconde o problema e faz a falha parecer um resultado válido.
+
+### Características
+
+- **Escopo real:** o bloco envolve a operação que pode lançar, no ponto em que alguém sabe reagir.
+- **Falha continua sendo falha:** retornar `0`, `null` ou um objeto vazio dentro do `catch` transforma exceção em dado e empurra o bug para depois.
+- **Função pequena:** se o `try/catch` compete com a regra, a regra sai para uma função e o bloco fica só com a decisão de erro.
+
+### Exemplo — exceção engolida num cálculo
+
+```typescript
+// ❌ Antes: a multiplicação não tem uma falha esperada, e 0 pode ser um total legítimo
+function calculateTotal(price: number, quantity: number) {
+  try {
+    const total = price * quantity;
+    return total;
+  } catch (error) {
+    console.error(error);
+    return 0;
+  }
+}
+
+// ✅ Depois: a função calcula. Quem chama trata a falha só onde ela pode ocorrer
+function calculateTotal(price: number, quantity: number) {
+  return price * quantity;
+}
+```
+
+- **Por que o segundo formato é melhor?**
+  - A função volta a ter uma responsabilidade: o total.
+  - Um `catch` que devolve `0` faz um pedido quebrado parecer um pedido de graça. O erro deixa de ser investigável.
+  - Em JavaScript, `undefined * 2` vira `NaN`. A multiplicação não lança. Dado inválido de formulário ou de API pede validação, não um `try/catch` em volta da conta.
+
+---
+
+## Traduzir a falha na fronteira
+
+Biblioteca e serviço externo falam a língua deles: códigos, tipos e mensagens que não pertencem ao domínio. *Clean Code* trata esse limite no capítulo de fronteiras (*Boundaries*): a aplicação encapsula a dependência e converte a falha para uma exceção que faça sentido para quem chama.
+
+O restante do sistema passa a depender do contrato interno, e a troca da biblioteca fica concentrada numa classe.
+
+### Características
+
+- **Um lugar conhece a biblioteca:** repositório, cliente HTTP ou adaptador concentra a chamada externa.
+- **Falha de infraestrutura com nome:** do lado de fora sai um erro da operação (`UserRepositoryError`), com a causa original preservada. Usuário inexistente continua sendo outra classe, de regra de negócio.
+- **Troca contida:** substituir o banco ou o SDK altera o adaptador, fora dos serviços que só pediram um usuário.
+
+### Exemplo — repositório que traduz a falha do banco
+
+```typescript
+class UserRepositoryError extends Error {
+  constructor(userId: string, cause: unknown) {
+    super(`Falha ao consultar o usuário ${userId}`, { cause });
+    this.name = "UserRepositoryError";
+  }
+}
+
+class UserRepository {
+  async findById(id: string) {
+    try {
+      return await database.findUser(id);
+    } catch (error) {
+      throw new UserRepositoryError(id, error);
+    }
+  }
+}
+```
+
+- **Por que isso é Clean Code?**
+  - `UserNotFoundError` significa que o usuário não existe. `UserRepositoryError` significa que a consulta ao banco falhou. O serviço reage a cada um de um jeito.
+  - O tratamento dessa dependência fica num único ponto. Trocar a biblioteca mexe no repositório, e o tipo de erro do driver não vaza para os serviços.
+
+---
+
+## Fluxo normal e caso especial
+
+Ausência de dado nem sempre é falha. Se o sistema sabe o que fazer quando não há desconto, não há item ou não há preferência, essa ausência faz parte do fluxo normal. O padrão *Special Case* (Martin Fowler, usado no capítulo 7 de *Clean Code*) devolve um objeto com o comportamento padrão seguro. Quem chama deixa de perguntar `null` antes de cada uso.
+
+O problema não é `null` ou `undefined` existirem. É devolvê-los sem a ausência estar no tipo, e obrigar cada chamada a adivinhar o que fazer. Passar `null` para uma função que não foi escrita para isso cria falha longe da origem. A escolha é explícita:
+
+- exceção, quando a ausência interrompe a operação;
+- caso especial, quando existe um comportamento padrão seguro;
+- tipo que representa sucesso ou falha, quando os dois resultados são igualmente normais para quem chama.
+
+### Características
+
+- **Ausência com comportamento:** o objeto especial implementa a mesma interface e faz a coisa segura (`calculate()` devolve `0`).
+- **Menos ramos defensivos:** a chamada não abre `if` só para sobreviver a um vazio.
+- **`null` deixa de ser protocolo:** ele permanece apenas onde a ausência é um estado modelado de propósito, visível no tipo.
+
+### Exemplo — `null` e objeto de caso especial
+
+```typescript
+// ❌ Antes: cada uso precisa lembrar que o desconto pode não existir
+function getDiscount(userId: string): Discount | null {
+  const discount = discounts.find((item) => item.userId === userId);
+
+  return discount ?? null;
+}
+
+const discount = getDiscount(userId);
+
+if (discount !== null) {
+  finalPrice = price - discount.calculate();
+} else {
+  finalPrice = price;
+}
+
+// ✅ Depois: "sem desconto" é um desconto de zero, e o cálculo não muda
+interface Discount {
+  calculate(): number;
+}
+
+const noDiscount: Discount = {
+  calculate: () => 0,
+};
+
+function getDiscount(userId: string): Discount {
+  const discount = discounts.find((item) => item.userId === userId);
+
+  return discount ?? noDiscount;
+}
+
+const discount = getDiscount(userId);
+
+finalPrice = price - discount.calculate();
+```
+
+- **Por que o segundo formato é melhor?**
+  - `getDiscount` sempre devolve algo que sabe calcular. O preço final tem uma linha, com ou sem campanha.
+  - O caso especial só cabe porque "desconto zero" é seguro para essa regra. Cliente sem campanha segue o fluxo. Pedido sem a identificação obrigatória não ganha um objeto neutro: a operação falha. O padrão não serve para esconder um erro.
+
+---
+
+## A regra em um lugar, a resposta em outro
+
+A função de negócio faz o trabalho e lança quando a operação não pode continuar. Traduzir isso para HTTP, tela ou fila é responsabilidade da borda. Numa API, essa borda escolhe o status e a mensagem externa. O serviço permanece alheio a `req` e `res`. No Express, o encaixe usual é um middleware de erro com quatro parâmetros, `(err, req, res, next)`. No NestJS, um exception filter. A função abaixo é esse papel, não a assinatura de um framework.
+
+### Características
+
+- **Serviço com a regra:** busca, valida e lança erro de domínio. Não formata resposta HTTP.
+- **Borda com o protocolo:** um único handler distingue recurso ausente, pedido inválido e falha interna.
+- **Detalhe técnico fica no log:** a resposta pública usa uma mensagem segura. Stack, query e credencial ficam no registro interno.
+
+### Exemplo — serviço e handler na borda
+
+```typescript
+class UserNotFoundError extends Error {
+  constructor(userId: string) {
+    super(`Usuário ${userId} não encontrado`);
+    this.name = "UserNotFoundError";
+  }
+}
+
+async function getUser(userId: string) {
+  const user = await userRepository.findById(userId);
+
+  if (!user) {
+    throw new UserNotFoundError(userId);
+  }
+
+  return user;
+}
+
+// A borda converte a falha em resposta. O serviço não conhece HTTP.
+function handleError(error: unknown, res: HttpResponse) {
+  console.error(error);
+
+  if (error instanceof UserNotFoundError) {
+    return res.status(404).json({ message: "Usuário não encontrado" });
+  }
+
+  return res.status(500).json({ message: "Ocorreu um erro interno" });
+}
+```
+
+- **Por que isso é Clean Code?**
+  - `getUser` descreve a regra. O status mora em quem fala com o cliente.
+  - O `500` final é uma simplificação: tudo o que não for `UserNotFoundError` cai nele. Numa aplicação real, o handler reconhece validação, autenticação, autorização e falha de infraestrutura, cada uma com o status correspondente. Erro inesperado vira resposta genérica, sem stack, SQL ou credencial no JSON.
+
+---
+
+## Resumo Rápido (Guia de Consulta)
+
+| Situação | Convenção Recomendada | Evitar ( ❌ ) | Preferir ( ✅ ) |
+| :--- | :--- | :--- | :--- |
+| **Operação que pode falhar** | Exceção com contexto | `{ error: 404 }` misturado ao dado | `throw new UserNotFoundError(userId)` |
+| **Mensagem** | Operação, identificador e causa original | `throw new Error("Erro!")` | Mensagem de domínio com `{ cause: error }` |
+| **Cálculo ou regra pura** | Função curta, sem `try/catch` decorativo | `catch` que devolve `0` | `return price * quantity` |
+| **Biblioteca externa** | Adaptador que traduz a falha | Tipo de erro do driver espalhado no serviço | `throw new UserRepositoryError(id, error)` |
+| **Tipo da falha** | Classe própria por situação | `throw new Error("Erro!")` para todo caso | `PaymentRejectedError`, `UserNotFoundError` |
+| **Ausência com padrão seguro** | *Special Case* | `if (discount !== null)` em todo uso | `noDiscount.calculate()` devolve `0` |
+| **Resposta ao usuário** | Handler na borda, log com o detalhe | Stack e SQL no JSON | `404` / `400` / `500` com mensagem segura |
+
+Trate a falha de forma localizável e deixe a função principal contando o caminho que dá certo.
+
+---
+
+### Referências
+
+- **Clean Code: A Handbook of Agile Software Craftsmanship** — Robert C. Martin (*Uncle Bob*), capítulo 7 (*Error Handling*) e capítulo 8 (*Boundaries*, para encapsular bibliotecas e serviços)
+- **Refactoring: Improving the Design of Existing Code** — Martin Fowler (*Special Case*)
+- [Clean Code // Dicionário do Programador](https://www.youtube.com/watch?reload=9&v=ln6t3uyTveQ)
+- [Clean Code - gov.br](https://www.gov.br/governodigital/pt-br/estrategias-e-governanca-digital/startupgovbr/guia-gps/pages/5-saiba-mais/praticas-de-engenharia-de-software/clean-code)
+- [Clean Code TypeScript](https://github.com/labs42io/clean-code-typescript)
