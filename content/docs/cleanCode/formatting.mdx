@@ -1,0 +1,223 @@
+---
+title: Boas Práticas de Formatação
+description: ABNT que faz sentido
+---
+
+Formatação é a organização visual do código. Na maioria das linguagens os espaçamentos não criam funcionalidades, e sim são utilizadas para facilitar a leitura e consequentemente a qualidade do código. Um código que é fácil de ler pode não ter boa qualidade, mas um código de qualidade é fácil de ler.
+
+E como um código vale mais que mil palavras, o exemplo a seguir deve convencer você de que formatação é importante.
+
+{/* prettier-ignore */}
+```javascript
+function printLetters(palavra){for (i = 0;i<palavra.length;i++)console.log(palavra[i]);}
+```
+
+---
+
+### Formatação vertical
+
+Para a formatação vertical podemos dividir o conceito em duas partes: a formatação relacionado ao espaço vertical que o seu código ocupa, e a relacionada à organização vertical do código.
+
+Em relação ao espaço vertical, **não existe uma regra que defina a quantidade de linhas ideal para um arquivo**, ou um limite de linhas único que faça sentido em todos os casos. É mais interessante pensar em termos de responsabilidades e escopo para definir quando dividir um arquivo do que simplesmente no seu número de linhas. Leve isso em consideração, mas procure escrever arquivos pequenos sempre que puder, pois **arquivos pequenos tendem a ser mais fáceis de entender** do que arquivos grandes.
+
+Se não existe um limite de linhas a ser temido quando escrevemos código, podemos pular linhas sempre pra deixar as coisas bem organizadas, certo? Bom, depende. Vamos analisar a função getNextDay a seguir. Você vai perceber que ela é uma função curta e simples, mas tem muitos comentários desnecessários que aumentam a distância entre o código e linhas em branco. Os comentários adicionam espaços que atrapalham a leitura sequencial da função. Depois de ler um comentário eu já esqueci qual era o nome da variável declarada na linha anterior.
+
+```javascript
+const getNextDay = (dateString) => {
+  // Parsing the date string parts manually to avoid any timezone conversion
+  let [year, month, day] = dateString.split('-').map((x) => +x);
+
+  // Note that month index starts from 0 in JavaScript
+  let date = new Date(Date.UTC(year, month - 1, day));
+
+  // Increment the day and create the new date
+  date.setUTCDate(date.getUTCDate() + 1);
+
+  day = String(date.getUTCDate()).padStart(2, '0');
+  month = String(date.getUTCMonth() + 1).padStart(2, '0');
+  year = date.getUTCFullYear();
+
+  return `${year}-${month}-${day}`;
+};
+```
+
+Removendo os comentários desnecessários e as linhas vazias, a leitura fica muito mais fluída, não é mesmo?
+
+```javascript
+const getNextDay = (dateString) => {
+  let [year, month, day] = dateString.split('-').map((x) => +x);
+
+  let date = new Date(Date.UTC(year, month - 1, day));
+
+  date.setUTCDate(date.getUTCDate() + 1);
+
+  day = String(date.getUTCDate()).padStart(2, '0');
+  month = String(date.getUTCMonth() + 1).padStart(2, '0');
+  year = date.getUTCFullYear();
+
+  return `${year}-${month}-${day}`;
+};
+```
+
+Então a formatação vertical deve ser remover todas as linhas desnecessárias do código? Mais uma vez, depende. Linhas em branco podem ajudar a quebrar blocos de pensamento, delimitar funções de forma mais fácil de ler e separar importações de dependências de forma estratégica.
+
+```javascript
+class ShoppingCart {
+  constructor() {
+    this.items = [];
+    this.total = 0;
+  }
+
+  calculateTotal() {
+    console.log('calcula o total');
+  }
+
+  addItem() {
+    console.log('adiciona um item');
+  }
+
+  checkout() {
+    console.log('finaliza a compra');
+  }
+}
+```
+
+**Resumo**: Pule linhas quando fizer sentido.
+
+O outro ponto que é necessário considerar é a organização do código. Se lemos um texto de cima para baixo faz sentido ler um código de cima para baixo também. Algumas linguagens de programação exigem uma ordem ao declarar e utilizar funções e variáveis, nesse caso a decisão de como ordenar o código já está tomada. Outras não tem essa restrição, e você pode decidir se faz mais sentido definir primeiro e usar depois, ou o contrário, apenas mantenha um padrão ao longo do projeto. Se você escolher escrever as chamadas das funções primeiro, escreva as suas definições logo na sequência, e mantenha a ordem do que aparece primeiro será definido primeiro.
+
+Tão importante quando a ordem que as coisas aparecem, lembre de considerer onde elas estarão. Se você vai usar uma variável dentro de um loop, defina-a perto do loop. Se você vai usar uma função auxiliar dentro de outra função, defina-a perto da função principal. Ter que ficar rolando para cima e para baixo procurando as funções pode ser muito frustrante, por isso **deixe ao alcance dos olhos** o que for usar.
+
+```javascript
+var count = 0;
+
+// muitas linhas de código depois
+for (count = 0; count < items.length; count++) {
+  console.log(count);
+}
+
+// Variável declarada junto do seu uso
+var count = 0;
+for (count = 0; count < items.length; count++) {
+  console.log(count);
+}
+```
+
+Existem exceções a essa regra de proximidade. As declarações das variáveis de instância devem ser colocadas todas juntas, em local acordado previamente, mas costumeiramente é no início da instância. Em javascript, o constructor das classes é a primeira coisa declarada na classe, o que já garante que eu saiba quais propriedade eu tenho ao começar a ler o arquivo. Em um componente as constantes, os estados e os hooks que eu preciso também aparecem logo no começo do componente. Declarar essas constantes em outros pontos do código pode gerar duplicações, confusão de qual variável utilizar e dificuldade para rastrear problemas futuros. Se você tiver muitas constantes e funções auxiliares, talvez seja o caso de arrumar o seu código, não a ordenação dele.
+
+**Resumo**: Aqui não tem resumo, ordenar o código verticalmente é uma tarefa difícil para ser resumida. Olhe com atenção o que está onde, se você consegue navegar sem se perder entre as funções, e se você está seguindo os acordos combinados com o time.
+
+---
+
+### Formatação horizontal
+
+Se não existe tamanho limite para o número de linhas de um arquivo, deveria existir tamanho máximo de caracteres em uma linha?
+
+Frases curtas tem sua função.
+
+Frases longas também tem sua função, elas trazem contexto, clima, ritmo, descrevem lugares, personagens, emoções, sensações, criam toda a narrativa de uma história se forem bem feitas e pontuadas, se tiverem motivo para serem longas e se demorarem nas suas metalinguagens. Essa frase não é assim, mas deu pra entender.
+
+Uma linha muito longa de código provavelmente dificultará o seu entendimento. Existe um padrão histórico de limitar em 80 o número de caracteres por linha, o que pode ser pouco dependendo da linguagem que se está usando ou o suficiente. Não é necessário fixar um limite rígido, novamente, o importante é julgar com bom senso se a informação está clara e legível para quem ler o código.
+
+**Resumo**: Quebre linhas quando fizer sentido.
+
+Espaços entre palavras e símbolos também fazem parte da formatação. **Use espaços para destacar o que precisa ser destacado**. No exemplo a seguir, o espaço entre os parâmetros da função ajudam a visualizar que são dois parâmetros. O espaço entre os operadores pode ser usado para marcar a ordem das operações. Escreva da forma que facilite a leitura por humanos.
+
+{/* prettier-ignore */}
+```javascript
+function porcentage(x,valor) {
+  return (x/100)*valor;
+}
+
+function porcentage(x, valor) {
+  return (x / 100) * valor;
+}
+
+function crazyMath(a, b) {
+  return a**2+b*3;
+}
+
+function crazyMath(a, b) {
+  return a**2 + b*3;
+}
+```
+
+Talvez você tenha a vontade de alinhar horizontalmente alguma parte do seu código. Ter a impressão visual de uma tabela pode ser tentador, talvez isso facilite a leitura. Mas na prática, ao fazer isso o que você acrescenta são espaços em branco e uma alta chance de fazer uma leitura dinâmica e não detalhada do que está escrito.
+
+{/* prettier-ignore */}
+```javascript
+const userSchema = {
+  id:           'uuid',
+  name:         'string',
+  userId:       'uuid',
+  birthDate:    'date',
+  createdAt:    'date',
+  address:      'string',
+  email:        'string',
+  document:     'string',
+  zipCode:      'number',
+  number:       'number',
+  street:       'number',
+  phone:        'string',
+  city:         'string',
+  state:        'string',
+  country:      'string',
+  complement:   'string',
+  neighborhood: 'string',
+  nickname:     'string',
+  occupation:   'string',
+  description:  'string',
+};
+```
+
+Você reparou que o campo street é um number?
+
+---
+
+### Identação
+
+Eu acredito que identação é a primeira coisa que se pensa ao falar de formatação, e também que é a mais fácil de explicar. Em algumas linguagens inclusive, a identação tem função. Erre a identação e seu código não faz o que deveria. Mas na maioria, ela serve para nos ajudar a não cometer erros.
+
+Pensa na identação como caixas onde seu código está. No início, você tem uma única caixa grande e está escrevendo as primeiras linhas, declarando variáveis que serão utilizadas por todo código. Ao começar uma função, essa função se torna uma caixa, menor e dentro da caixa maior, mas que terá elementos próprios. Se essa caixa é menor do que a anterior, você não deve escrever fora da caixa, tem que escrever dentro dela.
+
+```text
+class ShoppingCart {
+┌───────────────────────────────────────┐
+│  addItem() {                          │
+│  ┌──────────────────────────────────┐ │
+│  │  console.log('adiciona')         │ │
+│  └──────────────────────────────────┘ │
+│  }                                    │
+│                                       │
+│  removeItem() {                       │
+│  ┌──────────────────────────────────┐ │
+│co|nsole.log('remove')               │ │
+│  └──────────────────────────────────┘ │
+│  }                                    │
+└───────────────────────────────────────┘
+}
+```
+
+Quando a identação está correta, você enxerga facilmente onde uma função começa e termina. Não precisa ficar contando {}. Use a identação como aliada para evitar erros.
+
+Em alguns casos você vai querer ignorar a identação. Provavelmente você já escreveu e nem percebeu que pulou a identação. Se fizer isso, se pergunte se a economia de uma linha e um par de chaves deixou seu código melhor. Se não tiver certeza, idente.
+
+```javascript
+const limitStringLength = (string, limit = 30) => {
+  if (!string) return undefined;
+  return string.substring(0, limit);
+};
+
+const limitStringLength = (string, limit = 30) => {
+  if (!string) {
+    return undefined;
+  }
+  return string.substring(0, limit);
+};
+```
+
+---
+
+### Defina regras. Siga as regras.
+
+A formatação do código é uma ferramenta para facilitar a sua vida, lembre-se disso. Defina em conjunto com as pessoas que estão no mesmo projeto o que deve ser seguido. **Siga as regras definidas**, mas não fique refém de aplicar a formatação. Use um editor de código com lint e Prettier configurados. Deixe que eles apliquem as regras ao salvar, e siga escrevendo.
