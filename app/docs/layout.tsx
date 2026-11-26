@@ -91,6 +91,11 @@ export default function Layout({ children }: { children: ReactNode }) {
                   },
                   {
                     type: "page",
+                    url: "/docs/cleanCode/formatting",
+                    name: "Formatação",
+                  },
+                  {
+                    type: "page",
                     url: "/docs/cleanCode/automatedTesting",
                     name: "Automated Testing",
                   },
